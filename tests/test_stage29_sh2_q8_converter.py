@@ -21,6 +21,7 @@ def fixture(broken_converter=None, wrong_pointer=False, wrong_r13_load=False,
         if broken_converter == i:
             word ^= 1
         put(data, converter + i * 2, word)
+    put(data, ENTRY + 0x90, 0xDD52)  # Stage28 did not need to model R13 literal load
     address = CODE_LOAD_BASE + (0x100000 if wrong_pointer else converter)
     data[ENTRY + 0x1DC:ENTRY + 0x1E0] = address.to_bytes(4, "big")
     if wrong_r13_load:
