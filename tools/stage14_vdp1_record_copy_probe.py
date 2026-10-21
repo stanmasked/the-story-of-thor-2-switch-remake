@@ -140,14 +140,17 @@ def vdp1_indexed_address_profile(data: bytes, copy_offsets: list[int]) -> dict:
         not any(start <= offset < start + routine_bytes for start in copy_offsets)
         for offset, _ in base_loads
     )
+    vdp1_base_literal_load_count = 0
+    for offset in range(0, len(data) - 1, 2):
+        opcode = be16(data, offset)
+        if opcode & 0xF000 != 0xD000:
+            continue
+        target = mov_l_pc_target(offset, opcode, len(data))
+        if target is not None and be32(data, target) == VDP1_VRAM_BASE:
+            vdp1_base_literal_load_count += 1
+
     return {
-        "vdp1_base_literal_load_count": sum(
-            1 for offset in range(0, len(data) - 1, 2)
-            if (lambda op: op & 0xF000 == 0xD000 and
-                (lambda target: target is not None and be32(data, target) == VDP1_VRAM_BASE)(
-                    mov_l_pc_target(offset, op, len(data))
-                ))(be16(data, offset))
-        ),
+        "vdp1_base_literal_load_count": vdp1_base_literal_load_count,
         "base_plus_index_times_8_sequence_count": len(base_loads),
         "sequence_count_outside_copy_routine": outside_copy,
         "interpretation": (
