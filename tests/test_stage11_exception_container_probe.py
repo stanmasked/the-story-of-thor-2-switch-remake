@@ -61,13 +61,13 @@ class Stage11ExceptionContainerTests(unittest.TestCase):
     def test_record_zero_header_and_tail_marker_counts(self):
         record_a = bytearray(make_record(22, 0))
         record_b = bytearray(make_record(22, 1))
-        record_b[-2:] = b"\\x7f\\xff"
+        record_b[-2:] = b"\x7f\xff"
         result = profile_indexed_records([bytes(record_a), bytes(record_b)])
         self.assertEqual(result["records_with_zero_first_word"], 1)
         self.assertEqual(result["records_ending_in_7fff"], 1)
 
     def test_one_14_byte_tail_marker(self):
-        record = bytes(12) + b"\\x7f\\xff"
+        record = bytes(12) + b"\x7f\xff"
         result = profile_14_byte_tail_markers(record)
         self.assertEqual(result["word_7fff_count"], 1)
         self.assertEqual(result["candidate_14_byte_tail_marker_count"], 1)
@@ -75,7 +75,7 @@ class Stage11ExceptionContainerTests(unittest.TestCase):
         self.assertEqual(result["candidate_records_at_14_byte_grid_count"], 1)
 
     def test_marker_scan_does_not_assume_contiguous_records(self):
-        section = (bytes(12) + b"\\x7f\\xff") + bytes(2) + (bytes(12) + b"\\x7f\\xff")
+        section = (bytes(12) + b"\x7f\xff") + bytes(2) + (bytes(12) + b"\x7f\xff")
         result = profile_14_byte_tail_markers(section)
         self.assertEqual(result["candidate_14_byte_tail_marker_count"], 2)
         self.assertEqual(result["candidate_records_with_14_byte_successor_count"], 0)
