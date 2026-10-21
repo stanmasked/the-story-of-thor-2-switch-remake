@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 24 — a single SH-2 signed byte loop was statically verified: the counter originates at R4+1, is stored in SP+56, decremented, tested for a negative result, and branches back with a NOP delay slot. R4 provenance and actual runtime values remain unresolved.** This repository contains research tools, not a playable game.
+**Status: Stage 25 — the entry R4 argument is saved in R13 and passed to a helper through the delay slot of a BSR. The recognized loop head has a branch-free prefix to the stack-byte AND 0x3F rewrite. Post-call R4 contents and runtime paths remain unconfirmed.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -36,8 +36,9 @@ Python 3.11+ and only the standard library:
     python tools/stage22_vdp1_stack_store_audit.py "/private/The Story of Thor 2.iso" -o stage22.json
     python tools/stage23_vdp1_stack_alias_provenance.py "/private/The Story of Thor 2.iso" -o stage23.json
     python tools/stage24_loop_counter_probe.py "/private/The Story of Thor 2.iso" -o stage24.json
+    python tools/stage25_r4_provenance_probe.py "/private/The Story of Thor 2.iso" -o stage25.json
 
-Stages 01–07 and 09–24 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–25 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -64,9 +65,10 @@ Stages 01–07 and 09–24 report structural metadata and aggregate statistics o
 - **Stage 22:** recognizes an 88-byte stack frame after seven saved registers and 18 narrow direct SP stores before the factor loads. Two stores cover the SP+80 flag; none of the strictly recognized stores cover SP+20/SP+32.
 - **Stage 23:** finds four pointer-mediated writes through temporary aliases of R15: two to SP+20, one to SP+32, and one to SP+56. Their candidate value sources include byte fields R4+2, R4+3, R4+1 and a separate conditional rewrite masking SP+20 with 0x3F.
 - **Stage 24:** verifies one complete loop structure linking R4+1 to a byte counter at SP+56; after each pass it is decremented and checked as signed, with a backward BRA to the loop head and a NOP delay slot. A pure counter model is tested, not a measured game iteration count.
+- **Stage 25:** confirms one function prologue saving the entry R4 pointer in R13 and a later BSR passing R13 back through R4 in its delay slot. One branch-free loop prefix leads to an AND 0x3F rewrite of SP+20. The helper may clobber R4, so its post-call value is not yet proven.
 
-Stages 10–24 add 174 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–25 add 190 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
