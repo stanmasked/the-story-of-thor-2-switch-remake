@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 41 — the 43-slot, 276-byte clone pool is also read by four independent SH-2 code regions. Each checks a record's first word, reads the signed-word field at +126 and advances by 276 bytes; 11 comparisons use values 4/21/36. Another function scans the same 43 slots for an unmarked free entry. Runtime routing of cloned index 38 to the separate 68-entry dispatcher remains unproven.** This repository contains research tools, not a playable game.
+**Status: Stage 42 — both indexed 68-function dispatch routines begin with SH-2 prologues copying incoming R4 to R14. No recognized direct BSR/BRA/conditional or PC-literal references to these exact prologues establish a path from the 43-slot clone pool. A private, symbolic clone-to-function-39 trace consistency contract has been added, but no live emulator trace or VDP1 output is claimed.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -53,8 +53,9 @@ Python 3.11+ and only the standard library:
     python tools/stage39_writer_function_dispatch.py "/private/The Story of Thor 2.iso" -o stage39.json
     python tools/stage40_pool_clone_audit.py "/private/The Story of Thor 2.iso" -o stage40.json
     python tools/stage41_pool_readers.py "/private/The Story of Thor 2.iso" -o stage41.json
+    python tools/stage42_pool_dispatch_trace_contract.py "/private/The Story of Thor 2.iso" -o stage42.json
 
-Stages 01–07 and 09–41 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–42 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -97,10 +98,11 @@ Stages 01–07 and 09–41 report structural metadata and aggregate statistics o
 - **Stage 38:** narrows the census to 193/39 stores immediately preceded by a constant assignment in the corresponding source register and verifies one longer seven-instruction sequence loading 38 into R3 before storing word [R14+126], along with updating byte [R14+7].
 - **Stage 39:** links the constant-38 writer to one signed indexed JSR using R13+126, via slot 78 of a contiguous 116-code-pointer run (index 77). The writer preserves its input R4 as R13 but subsequently captures an R0 helper result in R14 using a BF/S delay slot.
 - **Stage 40:** resolves the returned-R0 helper to a slot selector scanning up to 43 records of 276 bytes each. It checks each record's first word for zero, returns null if no slot remains, and returns the selected slot pointer otherwise. A second helper copies 69 long words (276 bytes) from saved input R13 to newly returned R14; afterwards the writer changes R14+7 and stores index 38 in R14+126.
-- **Stage 41:** finds 57 PC-relative loads of the pool base and verifies four independent R4-relative readers of a first-word record marker and word field +126, advancing by the same 276-byte stride (11 comparisons against 4, 21 and 36). A second static function scans 43 slots for a free pointer without marking it. The cloned index-38 object's live use by the 68-entry dispatcher or VDP1 is not proven.
+- **Stage 41:** finds 57 PC-relative loads of the pool base and verifies four independent R4-relative readers of a first-word record marker and word field +126, advancing by the same 276-byte stride (11 comparisons against 4, 21 and 36). A second static function scans 43 slots for a free pointer without marking it.
+- **Stage 42:** confirms the two 68-entry dispatcher entry prologues copy R4 into R14 before indexed lookup. No direct BSR/BRA/conditional/PC-literal reference to those exact entry points has established that the caller passes the Stage40 cloned pool object. Introduces a private four-event symbolic trace validator to correlate one 43-slot allocation, 276-byte clone, index 38 write, and function 39 dispatch without exposing raw memory or falsely claiming runtime provenance.
 
-Stages 10–41 add 614 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–42 add 655 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
