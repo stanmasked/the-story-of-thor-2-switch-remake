@@ -37,3 +37,9 @@ stage08-*.png
 *_candidate.png
 
 stage09.json
+
+# Stage43: never commit live debugger PC/memory manifests or register captures.
+*.private-watchpoints.json
+*private-snapshots*.json
+*private-trace*.json
+*private-observations*.json
