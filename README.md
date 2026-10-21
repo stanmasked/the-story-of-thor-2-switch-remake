@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of *The Story of Thor 2* / *The Legend of Oasis* for Sega Saturn.
 
-**Status: Stage 06 — candidate target-window profiling completed.** This is research tooling, **not a playable game**.
+**Status: Stage 06 — candidate offset scales compared.** This is research tooling, **not a playable game**.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video or other original game assets.
 
@@ -20,7 +20,7 @@ python tools/stage05_field_profile.py '/private/The Story of Thor 2.iso' -o stag
 python tools/stage06_target_window_probe.py '/private/The Story of Thor 2.iso' -o stage06.json
 ```
 
-The scripts report structural metadata and aggregate statistics only; they do not export original payload bytes.
+The scripts report structural metadata and aggregate counts only; they do not export original payload bytes.
 
 ## Verified progress
 
@@ -28,9 +28,9 @@ The scripts report structural metadata and aggregate statistics only; they do no
 - **Stage 02:** identified 12 candidate three-section containers.
 - **Stage 03:** validated 21 counted big-endian 16-bit index tables and nine six-byte record chains.
 - **Stage 04:** validated 3,730 records across ten containers using the `6 + 8×N` grammar; two containers need separate analysis.
-- **Stage 05:** profiled both leading 16-bit fields in 32,862 elements. Both fit within the third section; neither field's semantics is proven.
-- **Stage 06:** compared target windows for four candidate fields (two element fields and two record-header fields). Element field A targets diverse data; field B targets mostly zero-heavy data. Record-header fields target more diverse windows. This is a format hypothesis, not decoded graphics.
-- **54 synthetic-only unit tests passed locally**; CI does not need the original disc.
+- **Stage 05:** profiled both leading 16-bit fields in 32,862 elements; their meanings are unproven.
+- **Stage 06:** compared byte-offset and ×8 offset interpretations for four fields. The ×8 interpretation of element field A has 32,859/32,862 valid 128-byte target windows and yields more unique patterns; raw-byte interpretations fit all windows for element field B and both record-header fields. This is a testable hypothesis, not a decoded format.
+- **55 synthetic-only unit tests passed locally**; CI does not need the original disc.
 
 Reports: [Stage 06 (RU)](docs/STAGE06_REPORT_RU.md) · [Stage 05](docs/STAGE05_REPORT_RU.md) · [Stage 04](docs/STAGE04_REPORT_RU.md) · [Roadmap](docs/ROADMAP_RU.md)
 
