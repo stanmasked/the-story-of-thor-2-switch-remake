@@ -28,7 +28,7 @@ def fixture(mutate=None, last_variant=True, first_direct=True, second_direct=Tru
         put(data, pos, 0xD000 | (reg << 8) | 1)  # literal at PC+8
         if is_last:
             put(data, pos + 2, 0x7FFC)
-            put(data, pos + 4, 0x2F46)
+            put(data, pos + 4, 0x2F42)
             put(data, pos + 6, 0x400B | (reg << 8))
             put(data, pos + 8, LOAD_BASE >> 16)  # overwritten below
             # Last call's delay slot must be at +8, so keep literal at +12.
