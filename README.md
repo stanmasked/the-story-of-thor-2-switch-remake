@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 38 — one exact seven-instruction SH-2 sequence locally stores constant 38 in R14+126 and also updates R14+7. Constant 38 matches the zero-based index of function entry 39 in the linked 68-pointer table. Adjacent-immediate stores have been separated from broader opcode-pair candidates; runtime object identity and bounds guards remain unproven.** This repository contains research tools, not a playable game.
+**Status: Stage 39 — the constant-38 writer is now linked to a signed-word table dispatcher: a contiguous run of 116 code pointers contains the writer in slot 78 (index 77). The dispatcher reads R13+126 and passes R13 as R4 in the JSR delay slot. Inside the writer, R14 receives a nonzero R0 helper result through a BF/S delay slot before writing 38 at R14+126. Runtime identity with the separate 68-pointer table is not established.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -50,8 +50,9 @@ Python 3.11+ and only the standard library:
     python tools/stage36_dispatch_index_audit.py "/private/The Story of Thor 2.iso" -o stage36.json
     python tools/stage37_index_writer_type_guard.py "/private/The Story of Thor 2.iso" -o stage37.json
     python tools/stage38_constant_index_writer.py "/private/The Story of Thor 2.iso" -o stage38.json
+    python tools/stage39_writer_function_dispatch.py "/private/The Story of Thor 2.iso" -o stage39.json
 
-Stages 01–07 and 09–38 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–39 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -91,10 +92,11 @@ Stages 01–07 and 09–38 report structural metadata and aggregate statistics o
 - **Stage 35:** proves one static BRA tail-call from an outer routine to the exceptional R5=2 wrapper. The outer routine appears as entry 39 of a 68-element contiguous function-pointer table, referenced via multiple PC-relative address loads.
 - **Stage 36:** identifies two indexed indirect JMPs into the same table. Both use a signed 16-bit word at R14+126 multiplied by four. The table-base variant selects slot 39 with index 38; the variant anchored at slot 39 selects it with index 0. Valid index ranges are mathematical constraints, not established runtime guards.
 - **Stage 37:** isolates earlier tests of a **separate byte at R14+30**: two zero tests and one sequence comparing it with 1..6. Those tests do not bound the signed table index at R14+126. A conservative opcode census finds 460 candidate MOV.W stores through R14+126 and 106 through R4+126 in 0TH2.BIN.
-- **Stage 38:** narrows the census to 193/39 stores immediately preceded by a constant assignment in the corresponding source register and verifies one longer seven-instruction sequence loading 38 into R3 before storing word [R14+126], along with updating byte [R14+7]. This matches table entry 39 as a static index, but runtime object identity is not proved.
+- **Stage 38:** narrows the census to 193/39 stores immediately preceded by a constant assignment in the corresponding source register and verifies one longer seven-instruction sequence loading 38 into R3 before storing word [R14+126], along with updating byte [R14+7].
+- **Stage 39:** links the constant-38 writer to one signed indexed JSR using R13+126, via slot 78 of a contiguous 116-code-pointer run (index 77). The writer preserves its input R4 as R13 but subsequently captures an R0 helper result in R14 using a BF/S delay slot, and writes 38 through that separate R14. Shared runtime object identity with the 68-entry dispatcher and VDP1 output remain unknown.
 
-Stages 10–38 add 501 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–39 add 537 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
