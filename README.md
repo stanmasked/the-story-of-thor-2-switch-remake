@@ -39,7 +39,7 @@ Stages 01–07 and 09–11 report structural metadata and aggregate statistics o
 - **Stage 10:** confirmed that block lengths admit many dimension/format combinations and a broad RGB555-like scan produces too many palette candidates.
 - **Stage 11:** characterized MONS.BIN and P4.BIN separately. Both have counted index tables, but their record headers mostly fail the Stage 04 counter rule; the 0x7FFF pattern in MONS.BIN is not sufficiently aligned to confirm a common geometry format.
 
-The Stage 10 analyzer adds 11 tests and Stage 11 adds 11 synthetic-only tests. CI validates the full suite without access to the original disc.
+Stage 10 and Stage 11 add 22 synthetic-only tests. GitHub Actions passed the full suite of 107 tests and the Python syntax check without access to the original disc.
 
 Reports: Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
