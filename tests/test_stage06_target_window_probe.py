@@ -20,6 +20,13 @@ class Stage06TargetWindowTests(unittest.TestCase):
         self.assertEqual(result['mean_entropy_bits_per_byte'], 0)
         self.assertEqual(result['all_zero_window_fraction'], 1)
 
+    def test_expected_count_reports_out_of_bounds(self):
+        result = window_profile([bytes(8)], expected_count=2)
+        self.assertEqual(result['window_count'], 1)
+        self.assertEqual(result['expected_window_count'], 2)
+        self.assertEqual(result['out_of_bounds_count'], 1)
+        self.assertEqual(result['coverage_fraction'], 0.5)
+
     def test_unique_pattern_count(self):
         result = window_profile([bytes(8), bytes(8), bytes([1])*8])
         self.assertEqual(result['unique_window_patterns'], 2)
