@@ -13,6 +13,20 @@ from stage14_vdp1_record_copy_probe import (
 )
 
 
+def indexed_fixture(literal_target=32, literal_value=VDP1_VRAM_BASE, add_opcode=0x343C):
+    data = bytearray(literal_target + 4)
+    # MOV.L @(disp,PC),R3; SHLL2 R4; SHLL R4; ADD R3,R4
+    aligned_pc = (0 + 4) & ~3
+    displacement = (literal_target - aligned_pc) // 4
+    if displacement < 0 or (literal_target - aligned_pc) % 4:
+        raise ValueError("target must fit aligned MOV.L PC displacement")
+    words = [0xD300 | displacement, 0x4408, 0x4400, add_opcode]
+    for index, word in enumerate(words):
+        data[index * 2:index * 2 + 2] = word.to_bytes(2, "big")
+    data[literal_target:literal_target + 4] = literal_value.to_bytes(4, "big")
+    return bytes(data)
+
+
 def fixture(start=0, literal_target=128, literal_value=VDP1_VRAM_BASE):
     words = list(ROUTINE_WORDS)
     instruction_offset = start + 4
@@ -77,11 +91,32 @@ class Stage14VDP1RecordCopyTests(unittest.TestCase):
         self.assertEqual(result["source_stride_bytes"], 32)
         self.assertEqual(result["destination_stride_bytes"], 32)
 
+    def test_copy_routine_itself_has_indexed_address_sequence(self):
+        result = scan_vdp1_record_copy_routines(fixture())
+        evidence = result["independent_vdp1_indexing_evidence"]
+        self.assertEqual(evidence["vdp1_base_literal_load_count"], 1)
+        self.assertEqual(evidence["base_plus_index_times_8_sequence_count"], 1)
+        self.assertEqual(evidence["sequence_count_outside_copy_routine"], 0)
+
+    def test_independent_index_times_eight_sequence_is_detected(self):
+        result = scan_vdp1_record_copy_routines(indexed_fixture())
+        evidence = result["independent_vdp1_indexing_evidence"]
+        self.assertEqual(result["matching_routine_count"], 0)
+        self.assertEqual(evidence["vdp1_base_literal_load_count"], 1)
+        self.assertEqual(evidence["base_plus_index_times_8_sequence_count"], 1)
+        self.assertEqual(evidence["sequence_count_outside_copy_routine"], 1)
+
+    def test_wrong_base_register_add_is_not_counted(self):
+        result = scan_vdp1_record_copy_routines(indexed_fixture(add_opcode=0x342C))
+        evidence = result["independent_vdp1_indexing_evidence"]
+        self.assertEqual(evidence["base_plus_index_times_8_sequence_count"], 0)
+
     def test_report_contains_no_offsets_or_payload(self):
         result = scan_vdp1_record_copy_routines(fixture())
         self.assertNotIn("offsets", result)
         self.assertNotIn("raw_bytes", result)
         self.assertNotIn("matches", result)
+        self.assertNotIn("offsets", result["independent_vdp1_indexing_evidence"])
 
 
 if __name__ == "__main__":
