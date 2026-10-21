@@ -1,0 +1,26 @@
+# Keep copyrighted source material outside public GitHub.
+*.iso
+*.cue
+*.bin
+*.BIN
+*.chd
+*.img
+*.mdf
+*.ccd
+*.sub
+*.wav
+*.mp3
+*.ogg
+*.cpk
+*.nro
+*.nsp
+*.xci
+*.zip
+private/
+extracted/
+assets/original/
+__pycache__/
+.pytest_cache/
+*.pyc
+stage01.json
+stage02.json
