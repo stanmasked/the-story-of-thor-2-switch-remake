@@ -37,7 +37,7 @@ Stages 01–07 and 09–10 report structural metadata and aggregate statistics o
 - **Stage 09:** analyzed 13,574 candidate blocks; the median fraction of bytes with identical high/low nibbles is 68.23%, consistent with packed 4bpp or another nibble-structured encoding, not proof of raw 4bpp.
 - **Stage 10:** confirmed that block lengths admit many dimension/format combinations and a broad RGB555-like scan produces too many palette candidates. No texture format or palette is confirmed.
 
-The Stage 10 analyzer adds 11 synthetic-only tests. GitHub Actions tests code without access to the original disc.
+The Stage 10 analyzer adds 11 synthetic-only tests. GitHub Actions passed the complete suite of 96 tests and the Python syntax check without access to the original disc.
 
 Reports: Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
