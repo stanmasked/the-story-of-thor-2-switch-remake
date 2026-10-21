@@ -52,6 +52,14 @@ class Stage05FieldProfileTests(unittest.TestCase):
         self.assertEqual(candidate['in_bounds_with_eight_byte_margin_count'], 3)
         self.assertEqual(candidate['aligned_to_eight_count'], 3)
 
+    def test_both_candidate_reference_fields_are_profiled(self):
+        item = bytes((0, 8, 0, 16, 0, 32, 255, 240))
+        result = profile_items([item], third_size=128)
+        fields = result['candidate_third_section_references']
+        self.assertEqual([field['field_byte_offset_zero_based'] for field in fields], [0, 2])
+        self.assertEqual(fields[0]['in_bounds_with_eight_byte_margin_count'], 1)
+        self.assertEqual(fields[1]['in_bounds_with_eight_byte_margin_count'], 1)
+
     def test_candidate_reference_out_of_bounds(self):
         item = bytes((0, 1, 3, 25, 0, 32, 255, 240))
         result = profile_items([item], third_size=800)
