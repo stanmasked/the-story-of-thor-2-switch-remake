@@ -29,7 +29,7 @@ The scripts report structural metadata and aggregate statistics only; they do no
 - **Stage 03:** validated 21 counted big-endian 16-bit index tables and nine six-byte record chains.
 - **Stage 04:** validated 3,730 records across ten containers using the `6 + 8×N` grammar; two containers need separate analysis.
 - **Stage 05:** profiled both leading 16-bit fields in 32,862 elements. Both fit within the third section; neither field's semantics is proven.
-- **Stage 06:** target windows for field A are much more diverse than field B. At 128 bytes, field A has 12,682 unique window patterns and 36.86% zeros; field B has 639 unique patterns and 82.65% zeros. This supports—but does not prove—a dense-data vs. sparse-companion hypothesis.
+- **Stage 06:** compared target windows for four candidate fields (two element fields and two record-header fields). Element field A targets diverse data; field B targets mostly zero-heavy data. Record-header fields target more diverse windows. This is a format hypothesis, not decoded graphics.
 - **54 synthetic-only unit tests passed locally**; CI does not need the original disc.
 
 Reports: [Stage 06 (RU)](docs/STAGE06_REPORT_RU.md) · [Stage 05](docs/STAGE05_REPORT_RU.md) · [Stage 04](docs/STAGE04_REPORT_RU.md) · [Roadmap](docs/ROADMAP_RU.md)
