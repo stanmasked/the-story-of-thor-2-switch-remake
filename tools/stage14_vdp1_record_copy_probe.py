@@ -100,6 +100,64 @@ def matches_vdp1_record_copy_routine(data: bytes, offset: int) -> bool:
     return be32(data, literal_offset) == VDP1_VRAM_BASE
 
 
+def find_vdp1_index_times_eight(data: bytes, load_offset: int, base_register: int) -> int | None:
+    """Find SHLL2; SHLL; ADD(base,index) following a VDP1 base literal load."""
+    start = load_offset + 2
+    stop = min(len(data) - 1, load_offset + 42)
+    for index_register in range(16):
+        shll2 = 0x4008 | (index_register << 8)
+        shll = 0x4000 | (index_register << 8)
+        add_base = 0x300C | (index_register << 8) | (base_register << 4)
+        for first in range(start, stop, 2):
+            if be16(data, first) != shll2:
+                continue
+            for second in range(first + 2, min(first + 10, stop), 2):
+                if be16(data, second) != shll:
+                    continue
+                for third in range(second + 2, min(second + 10, stop), 2):
+                    if be16(data, third) == add_base:
+                        return index_register
+    return None
+
+
+def vdp1_indexed_address_profile(data: bytes, copy_offsets: list[int]) -> dict:
+    """Count independent base + index*8 patterns without emitting offsets."""
+    base_loads = []
+    for offset in range(0, len(data) - 1, 2):
+        opcode = be16(data, offset)
+        if opcode & 0xF000 != 0xD000:
+            continue
+        target = mov_l_pc_target(offset, opcode, len(data))
+        if target is None or be32(data, target) != VDP1_VRAM_BASE:
+            continue
+        base_register = (opcode >> 8) & 0x0F
+        index_register = find_vdp1_index_times_eight(data, offset, base_register)
+        if index_register is not None:
+            base_loads.append((offset, index_register))
+
+    routine_bytes = len(ROUTINE_WORDS) * 2
+    outside_copy = sum(
+        not any(start <= offset < start + routine_bytes for start in copy_offsets)
+        for offset, _ in base_loads
+    )
+    return {
+        "vdp1_base_literal_load_count": sum(
+            1 for offset in range(0, len(data) - 1, 2)
+            if (lambda op: op & 0xF000 == 0xD000 and
+                (lambda target: target is not None and be32(data, target) == VDP1_VRAM_BASE)(
+                    mov_l_pc_target(offset, op, len(data))
+                ))(be16(data, offset))
+        ),
+        "base_plus_index_times_8_sequence_count": len(base_loads),
+        "sequence_count_outside_copy_routine": outside_copy,
+        "interpretation": (
+            "An SHLL2/SHLL/ADD pattern computes base + index*8. This independently "
+            "corroborates indexed VDP1 address arithmetic but does not identify the "
+            "meaning of the indexed structure."
+        ),
+    }
+
+
 def scan_vdp1_record_copy_routines(data: bytes) -> dict:
     """Find the conservative signature and return facts, never source offsets."""
     byte_length = len(ROUTINE_WORDS) * 2
@@ -108,6 +166,7 @@ def scan_vdp1_record_copy_routines(data: bytes) -> dict:
         for offset in range(0, len(data) - byte_length + 1, 2)
         if matches_vdp1_record_copy_routine(data, offset)
     ]
+    indexed = vdp1_indexed_address_profile(data, matches)
     return {
         "routine_signature": "SH-2 VDP1-base load plus 32-byte copy-loop signature",
         "matching_routine_count": len(matches),
@@ -119,14 +178,17 @@ def scan_vdp1_record_copy_routines(data: bytes) -> dict:
         "destination_stride_bytes": 32,
         "loop_backedge_count": 2,
         "return_delay_slot_restores_saved_register": True,
+        "independent_vdp1_indexing_evidence": indexed,
         "interpretation": (
             "The routine copies 32-byte records into VDP1 VRAM. This stride matches "
             "the Saturn VDP1 command-record size and is strong evidence for a command "
-            "upload path, but the copied source records have not yet been decoded."
+            "upload path. Additional base + index*8 patterns occur outside this routine, "
+            "but the copied source records have not yet been decoded."
         ),
         "limitations": [
             "This is an exact signature for one observed routine, not a complete SH-2 disassembler.",
             "The source descriptor and copied 32-byte records are not interpreted field by field.",
+            "Indexed VDP1 addressing patterns do not establish the semantic type of the indexed structure.",
             "Callers and runtime reachability are not established by this signature scan.",
             "No exact offsets, original bytes, textures, palettes, audio, or video are emitted.",
             "No native game engine or Nintendo Switch NRO is produced.",
