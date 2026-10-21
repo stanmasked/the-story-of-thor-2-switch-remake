@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 34 — all three Stage33 competing R14 restores are confirmed as delay-slot instructions on outgoing jumps (one JMP, two BRA beyond the observed calls), not simple fall-through writes. No direct BSR or PC-relative function-pointer literal to the exceptional R4 wrapper has been found. This is not whole-program CFG proof.** This repository contains research tools, not a playable game.
+**Status: Stage 35 — the previously unresolved R5=2 wrapper has one incoming BRA tail-call from another routine; the outer routine has an entry in a contiguous 68-pointer code table (slot 39, one-based). Four stored references each to the table base and this entry cell were found. This is static dispatch evidence, not runtime VDP1 decoding.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -46,8 +46,9 @@ Python 3.11+ and only the standard library:
     python tools/stage32_field_consumer_callers.py "/private/The Story of Thor 2.iso" -o stage32.json
     python tools/stage33_r14_origin_audit.py "/private/The Story of Thor 2.iso" -o stage33.json
     python tools/stage34_r14_exit_delay_guards.py "/private/The Story of Thor 2.iso" -o stage34.json
+    python tools/stage35_table_tail_link.py "/private/The Story of Thor 2.iso" -o stage35.json
 
-Stages 01–07 and 09–34 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–35 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -83,10 +84,11 @@ Stages 01–07 and 09–34 report structural metadata and aggregate statistics o
 - **Stage 31:** all three candidate consumers have matched function prologues saving 5/7/7 registers and read a 16-bit word at R4+16 before +31..+34. The second reader gates field access on bit0 of R4+7 being clear; the first tests bit2 of R4+6 earlier, and the extended reader has no recognized branch in its initial prefix.
 - **Stage 32:** verified two direct BSR callers (one for each of the first two consumers) and eight indirect JSR callers of the full seven-byte reader, all resolved via 32-bit PC-relative address literals. Nine pass R14 as R4 in a call delay slot; the eighth indirect caller sets R5=2 instead.
 - **Stage 33:** among nine R14-to-R4 call sites, eight have a local R4-to-R14 save prologue: five have no recognized intervening R14 writes and three have ambiguous lexical restores from possible alternate paths. One direct caller lacks a nearby R14 origin. The exceptional indirect wrapper stores its incoming R4 at SP before JSR and sets R5=2 in the delay slot.
-- **Stage 34:** resolves the three lexical R14 restore sites as exit-jump delay slots: one JMP @Rn, two BRA destinations beyond their local call sites. None is an ordinary fall-through update before the call. The exceptional wrapper has no found direct BSR or PC-relative MOV.L pointer references. Control-flow completeness and the wrapper's external origin remain open.
+- **Stage 34:** resolves the three lexical R14 restore sites as exit-jump delay slots: one JMP @Rn, two BRA destinations beyond their local call sites. None is an ordinary fall-through update before the call. The exceptional wrapper has no found direct BSR or PC-relative MOV.L pointer references.
+- **Stage 35:** proves one static BRA tail-call from an outer routine to the exceptional R5=2 wrapper. The outer routine appears as entry 39 of a 68-element contiguous function-pointer table, referenced via multiple PC-relative address loads. Runtime table selection, actual gameplay reachability and VDP1 output remain unknown.
 
-Stages 10–34 add 383 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–35 add 412 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
