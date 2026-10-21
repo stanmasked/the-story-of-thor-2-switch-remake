@@ -17,7 +17,7 @@ from stage31_entry_guard_audit import candidate_prologue, field16_before_group
 LOAD_BASE = 0x06004000
 R14_TO_R4 = 0x64E3  # MOV R14,R4 in a SH-2 call delay slot
 R5_IMMEDIATE_TWO = 0xE502
-SAFE_INTERVENING = (0x7FFC, 0x2F46)  # adjust SP, save R4 before indirect JSR
+SAFE_INTERVENING = (0x7FFC, 0x2F42)  # reserve four bytes, write R4 at SP
 
 
 def bsr_destination(position: int, opcode: int) -> int | None:
