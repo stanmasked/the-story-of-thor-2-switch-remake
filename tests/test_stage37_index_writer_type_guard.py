@@ -12,9 +12,9 @@ from stage37_index_writer_type_guard import (
     dispatch_locations, inspect_local_guards
 )
 
-BASE_ZERO = BASE - 104
-CELL_ZERO = CELL - 164
-CELL_SWITCH = CELL - 134
+BASE_ZERO = BASE - 130
+CELL_ZERO = CELL - 80
+CELL_SWITCH = CELL - 70
 STORE_R14 = 0xC50
 STORE_R4 = 0xC60
 
