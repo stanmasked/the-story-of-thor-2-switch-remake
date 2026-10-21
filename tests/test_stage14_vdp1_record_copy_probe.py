@@ -57,8 +57,7 @@ class Stage14VDP1RecordCopyTests(unittest.TestCase):
         self.assertFalse(matches_vdp1_record_copy_routine(fixture(), 1))
 
     def test_finds_signature_after_prefix(self):
-        prefix = bytes(16)
-        data = prefix + fixture(start=0, literal_target=144)
+        data = fixture(start=16, literal_target=160)
         result = scan_vdp1_record_copy_routines(data)
         self.assertEqual(result["matching_routine_count"], 1)
 
