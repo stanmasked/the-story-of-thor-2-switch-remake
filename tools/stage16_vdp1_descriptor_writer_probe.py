@@ -188,7 +188,7 @@ def summarize_writer_analysis(data: bytes) -> dict:
             candidates and candidates[0]["pointer_advance_confirmed"]
         ),
         "accounting_invariant_needs_caller_validation": bool(
-            candidates and candidates[0]["per_source_count_shift_right_count"] != 1
+            candidates and candidates[0]["per_source_count_shift_right_count"] == 3
         ),
         "interpretation": (
             "A candidate writer fills an 8-byte staging descriptor: a 32-bit source address, "
