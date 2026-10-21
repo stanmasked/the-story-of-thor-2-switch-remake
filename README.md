@@ -43,9 +43,9 @@ Stages 01–07 and 09–14 report structural metadata and aggregate statistics o
 - **Stage 11:** characterized MONS.BIN and P4.BIN separately. Both have counted index tables, but their record headers mostly fail the Stage 04 counter rule.
 - **Stage 12:** found exact Saturn VDP1/VDP2 address literals in 0TH2.BIN and some other files; literal presence alone does not prove executable code.
 - **Stage 13:** found 46 candidate SH-2 MOV.L PC-relative references to known graphics-hardware constants, using 38 unique literal slots; code/data boundaries remain unverified.
-- **Stage 14:** identified one exact SH-2 signature that copies eight longwords (32 bytes) per iteration to VDP1 VRAM. The stride matches VDP1 command records, but the copied data and callers remain unconfirmed.
+- **Stage 14:** identified one exact SH-2 signature that copies eight longwords (32 bytes) per iteration to VDP1 VRAM. Two additional instruction sequences independently compute VDP1_BASE + index*8; the copied data and callers remain unconfirmed.
 
-Stages 10–14 add 50 synthetic-only tests beyond the Stage 09 suite. CI validates code without access to the original disc.
+Stages 10–14 add 54 synthetic-only tests beyond the Stage 09 suite. CI validates code without access to the original disc.
 
 Reports: Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
