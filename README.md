@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 13 — SH-2 PC-relative references to Saturn graphics addresses are identified as candidates; texture format remains unconfirmed.** This repository contains reverse-engineering tools, not a playable game.
+**Status: Stage 14 — a 32-byte-stride VDP1 VRAM record-copy routine has been identified by a conservative SH-2 signature.** This repository contains reverse-engineering tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -25,8 +25,9 @@ Python 3.11+ and only the standard library:
     python tools/stage11_exception_container_probe.py "/private/The Story of Thor 2.iso" -o stage11.json
     python tools/stage12_hardware_reference_probe.py "/private/The Story of Thor 2.iso" -o stage12.json
     python tools/stage13_sh2_literal_reference_probe.py "/private/The Story of Thor 2.iso" -o stage13.json
+    python tools/stage14_vdp1_record_copy_probe.py "/private/The Story of Thor 2.iso" -o stage14.json
 
-Stages 01–07 and 09–13 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–14 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -41,10 +42,11 @@ Stages 01–07 and 09–13 report structural metadata and aggregate statistics o
 - **Stage 10:** confirmed that block lengths admit many dimension/format combinations and a broad RGB555-like scan produces too many palette candidates.
 - **Stage 11:** characterized MONS.BIN and P4.BIN separately. Both have counted index tables, but their record headers mostly fail the Stage 04 counter rule.
 - **Stage 12:** found exact Saturn VDP1/VDP2 address literals in 0TH2.BIN and some other files; literal presence alone does not prove executable code.
-- **Stage 13:** resolved 46 candidate SH-2 MOV.L PC-relative references to known graphics-hardware constants, using 38 unique literal slots. Code/data boundaries and active control flow remain unverified.
+- **Stage 13:** found 46 candidate SH-2 MOV.L PC-relative references to known graphics-hardware constants, using 38 unique literal slots; code/data boundaries remain unverified.
+- **Stage 14:** identified one exact SH-2 signature that copies eight longwords (32 bytes) per iteration to VDP1 VRAM. The stride matches VDP1 command records, but the copied data and callers remain unconfirmed.
 
-Stages 10–13 add 40 synthetic-only tests beyond the Stage 09 suite. CI validates code without access to the original disc.
+Stages 10–14 add 50 synthetic-only tests beyond the Stage 09 suite. CI validates code without access to the original disc.
 
-Reports: Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
