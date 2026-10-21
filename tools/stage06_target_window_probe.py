@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage06: compare byte-window statistics at candidate reference fields.
+"""Stage06: compare candidate byte-offset and 8-byte-unit interpretations.
 
 Metadata-only diagnostic. It does not emit target bytes, exact offsets, sprites,
 maps, audio, video, or individual record contents.
@@ -20,18 +20,27 @@ from stage05_field_profile import valid_eight_byte_items
 
 WINDOW_SIZES = (8, 16, 32, 64, 128)
 TARGET_FIELDS = {
-    'element_field_a': {'source': 'element', 'offset': 0},
-    'element_field_b': {'source': 'element', 'offset': 2},
-    'record_header_field_a': {'source': 'record_header', 'offset': 2},
-    'record_header_field_b': {'source': 'record_header', 'offset': 4},
+    'element_a_raw_bytes': {'source': 'element', 'offset': 0, 'scale': 1},
+    'element_a_units_of_8': {'source': 'element', 'offset': 0, 'scale': 8},
+    'element_b_raw_bytes': {'source': 'element', 'offset': 2, 'scale': 1},
+    'element_b_units_of_8': {'source': 'element', 'offset': 2, 'scale': 8},
+    'record_header_a_raw_bytes': {'source': 'record_header', 'offset': 2, 'scale': 1},
+    'record_header_a_units_of_8': {'source': 'record_header', 'offset': 2, 'scale': 8},
+    'record_header_b_raw_bytes': {'source': 'record_header', 'offset': 4, 'scale': 1},
+    'record_header_b_units_of_8': {'source': 'record_header', 'offset': 4, 'scale': 8},
 }
 
 
-def window_profile(windows: list[bytes]) -> dict:
+def window_profile(windows: list[bytes], expected_count: int | None = None) -> dict:
     """Summarize windows without returning their contents or exact locations."""
+    if expected_count is None:
+        expected_count = len(windows)
     if not windows:
         return {
             'window_count': 0,
+            'expected_window_count': expected_count,
+            'out_of_bounds_count': expected_count,
+            'coverage_fraction': 0.0 if expected_count else None,
             'unique_window_patterns': 0,
             'mean_zero_fraction': None,
             'mean_entropy_bits_per_byte': None,
@@ -52,6 +61,9 @@ def window_profile(windows: list[bytes]) -> dict:
         all_zero += not any(window)
     return {
         'window_count': len(windows),
+        'expected_window_count': expected_count,
+        'out_of_bounds_count': max(0, expected_count - len(windows)),
+        'coverage_fraction': round(len(windows) / expected_count, 6) if expected_count else None,
         'unique_window_patterns': len(set(windows)),
         'mean_zero_fraction': round(sum(zero_fractions) / len(zero_fractions), 4),
         'mean_entropy_bits_per_byte': round(sum(entropies) / len(entropies), 4),
@@ -63,6 +75,7 @@ def window_profile(windows: list[bytes]) -> dict:
 def analyze(image: Path) -> dict:
     disc = inventory(image)
     global_windows = {name: {size: [] for size in WINDOW_SIZES} for name in TARGET_FIELDS}
+    global_expected = {name: 0 for name in TARGET_FIELDS}
     container_profiles = []
     strict_item_total = 0
     strict_record_total = 0
@@ -91,12 +104,19 @@ def analyze(image: Path) -> dict:
             strict_container_count += 1
             strict_item_total += len(items)
             strict_record_total += len(records)
-            targets = {
-                'element_field_a': [int.from_bytes(item[0:2], 'big') for item in items],
-                'element_field_b': [int.from_bytes(item[2:4], 'big') for item in items],
-                'record_header_field_a': [int.from_bytes(record[2:4], 'big') for record in records],
-                'record_header_field_b': [int.from_bytes(record[4:6], 'big') for record in records],
+            raw_targets = {
+                'element': {
+                    0: [int.from_bytes(item[0:2], 'big') for item in items],
+                    2: [int.from_bytes(item[2:4], 'big') for item in items],
+                },
+                'record_header': {
+                    2: [int.from_bytes(record[2:4], 'big') for record in records],
+                    4: [int.from_bytes(record[4:6], 'big') for record in records],
+                },
             }
+            targets = {}
+            for name, spec in TARGET_FIELDS.items():
+                targets[name] = [v * spec['scale'] for v in raw_targets[spec['source']][spec['offset']]]
             per_container = {
                 'path': entry['path'],
                 'item_count': len(items),
@@ -105,15 +125,19 @@ def analyze(image: Path) -> dict:
             }
             third = sections[2]
             for field_name, offsets in targets.items():
+                global_expected[field_name] += len(offsets)
                 per_container['fields'][field_name] = {}
                 for size in WINDOW_SIZES:
                     windows = [third[offset:offset + size] for offset in offsets if offset + size <= len(third)]
                     global_windows[field_name][size].extend(windows)
-                    per_container['fields'][field_name][str(size)] = window_profile(windows)
+                    per_container['fields'][field_name][str(size)] = window_profile(windows, len(offsets))
             container_profiles.append(per_container)
 
     profiles = {
-        field_name: {str(size): window_profile(global_windows[field_name][size]) for size in WINDOW_SIZES}
+        field_name: {
+            str(size): window_profile(global_windows[field_name][size], global_expected[field_name])
+            for size in WINDOW_SIZES
+        }
         for field_name in TARGET_FIELDS
     }
     return {
@@ -129,6 +153,7 @@ def analyze(image: Path) -> dict:
         'field_window_profiles': profiles,
         'container_profiles': container_profiles,
         'limitations': [
+            'Scale-by-eight is a tested hypothesis, not confirmed encoding.',
             'Window statistics do not prove any field is a pointer or identify a pixel format.',
             'No exact offsets, window contents, graphics, maps, music or video are exported.',
             'No sprite decoder or playable Switch build exists yet.',
