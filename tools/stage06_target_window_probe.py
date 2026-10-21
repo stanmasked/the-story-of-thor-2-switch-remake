@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage06: compare byte-window statistics at two candidate reference fields.
+"""Stage06: compare byte-window statistics at candidate reference fields.
 
 Metadata-only diagnostic. It does not emit target bytes, exact offsets, sprites,
 maps, audio, video, or individual record contents.
@@ -15,10 +15,16 @@ from pathlib import Path
 from inspect_saturn_iso import SECTOR, inventory
 from stage02_probe import offsets_layout
 from stage03_index_tables import MAX_PROBE_BYTES
+from stage04_record_layout import indexed_records
 from stage05_field_profile import valid_eight_byte_items
 
 WINDOW_SIZES = (8, 16, 32, 64, 128)
-FIELD_POSITIONS = (0, 2)
+TARGET_FIELDS = {
+    'element_field_a': {'source': 'element', 'offset': 0},
+    'element_field_b': {'source': 'element', 'offset': 2},
+    'record_header_field_a': {'source': 'record_header', 'offset': 2},
+    'record_header_field_b': {'source': 'record_header', 'offset': 4},
+}
 
 
 def window_profile(windows: list[bytes]) -> dict:
@@ -35,7 +41,6 @@ def window_profile(windows: list[bytes]) -> dict:
     lengths = {len(window) for window in windows}
     if len(lengths) != 1 or not next(iter(lengths)):
         raise ValueError('All windows must have one common nonzero length')
-    length = next(iter(lengths))
     zero_fractions = []
     entropies = []
     all_zero = 0
@@ -57,9 +62,10 @@ def window_profile(windows: list[bytes]) -> dict:
 
 def analyze(image: Path) -> dict:
     disc = inventory(image)
-    global_windows = {pos: {size: [] for size in WINDOW_SIZES} for pos in FIELD_POSITIONS}
+    global_windows = {name: {size: [] for size in WINDOW_SIZES} for name in TARGET_FIELDS}
     container_profiles = []
     strict_item_total = 0
+    strict_record_total = 0
     strict_container_count = 0
 
     with image.open('rb') as stream:
@@ -79,25 +85,36 @@ def analyze(image: Path) -> dict:
             items, _, strict = valid_eight_byte_items(sections[0])
             if not strict:
                 continue
+            records = indexed_records(sections[0])
+            if records is None:
+                continue
             strict_container_count += 1
             strict_item_total += len(items)
-            per_container = {'path': entry['path'], 'item_count': len(items), 'fields': {}}
+            strict_record_total += len(records)
+            targets = {
+                'element_field_a': [int.from_bytes(item[0:2], 'big') for item in items],
+                'element_field_b': [int.from_bytes(item[2:4], 'big') for item in items],
+                'record_header_field_a': [int.from_bytes(record[2:4], 'big') for record in records],
+                'record_header_field_b': [int.from_bytes(record[4:6], 'big') for record in records],
+            }
+            per_container = {
+                'path': entry['path'],
+                'item_count': len(items),
+                'record_count': len(records),
+                'fields': {},
+            }
             third = sections[2]
-            for pos in FIELD_POSITIONS:
-                per_container['fields'][str(pos)] = {}
+            for field_name, offsets in targets.items():
+                per_container['fields'][field_name] = {}
                 for size in WINDOW_SIZES:
-                    windows = []
-                    for item in items:
-                        offset = int.from_bytes(item[pos:pos + 2], 'big')
-                        if offset + size <= len(third):
-                            windows.append(third[offset:offset + size])
-                    global_windows[pos][size].extend(windows)
-                    per_container['fields'][str(pos)][str(size)] = window_profile(windows)
+                    windows = [third[offset:offset + size] for offset in offsets if offset + size <= len(third)]
+                    global_windows[field_name][size].extend(windows)
+                    per_container['fields'][field_name][str(size)] = window_profile(windows)
             container_profiles.append(per_container)
 
     profiles = {
-        str(pos): {str(size): window_profile(global_windows[pos][size]) for size in WINDOW_SIZES}
-        for pos in FIELD_POSITIONS
+        field_name: {str(size): window_profile(global_windows[field_name][size]) for size in WINDOW_SIZES}
+        for field_name in TARGET_FIELDS
     }
     return {
         'schema_version': 1,
@@ -106,15 +123,13 @@ def analyze(image: Path) -> dict:
         'disc_product': disc['saturn_header']['product'],
         'strict_container_count': strict_container_count,
         'strict_item_count': strict_item_total,
+        'strict_record_count': strict_record_total,
         'window_sizes_bytes': list(WINDOW_SIZES),
-        'candidate_fields': {
-            '0': 'first BE16 field in an eight-byte element; candidate target only',
-            '2': 'second BE16 field in an eight-byte element; candidate target only',
-        },
+        'candidate_fields': TARGET_FIELDS,
         'field_window_profiles': profiles,
         'container_profiles': container_profiles,
         'limitations': [
-            'Window statistics do not prove either field is a pointer or identify a pixel format.',
+            'Window statistics do not prove any field is a pointer or identify a pixel format.',
             'No exact offsets, window contents, graphics, maps, music or video are exported.',
             'No sprite decoder or playable Switch build exists yet.',
         ],
