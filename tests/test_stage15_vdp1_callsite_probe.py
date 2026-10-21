@@ -36,7 +36,7 @@ def make_fixture(include_call=True, overwrite_target_register=False):
     put16(data, 0x12, 0x0009)
     put16(data, 0x14, 0x63F2)
     put16(data, 0x16, 0xE100)
-    put16(data, 0x18, 0xD30C)  # R3 = count address, literal at 0x90
+    put16(data, 0x18, 0xD31D)  # R3 = count address, literal at 0x90
     put16(data, 0x1A, 0x2311)  # MOV.W R1,@R3 (clear count)
     put16(data, 0x1C, 0x000B)
     put16(data, 0x1E, 0x6EF6)
