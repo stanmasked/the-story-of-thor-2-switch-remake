@@ -90,9 +90,9 @@ class Stage16VDP1DescriptorWriterTests(unittest.TestCase):
         result = summarize_writer_analysis(make_fixture())
         self.assertTrue(result["source_address_uses_base_plus_index_times_eight"])
 
-    def test_detects_argument_shifted_right_by_three(self):
+    def test_detects_r5_shifted_right_by_three(self):
         result = summarize_writer_analysis(make_fixture())
-        self.assertTrue(result["per_source_count_is_argument_shifted_right_by_three"])
+        self.assertTrue(result["per_source_count_is_r5_value_shifted_right_by_three"])
 
     def test_detects_single_global_increment_and_eight_byte_advance(self):
         result = summarize_writer_analysis(make_fixture())
@@ -101,7 +101,7 @@ class Stage16VDP1DescriptorWriterTests(unittest.TestCase):
 
     def test_flags_accounting_for_caller_validation(self):
         result = summarize_writer_analysis(make_fixture())
-        self.assertTrue(result["accounting_invariant_needs_caller_validation"])
+        self.assertTrue(result["accounting_invariant_needs_r5_dataflow_validation"])
 
     def test_output_does_not_include_source_offsets_or_bytes(self):
         result = summarize_writer_analysis(make_fixture())
