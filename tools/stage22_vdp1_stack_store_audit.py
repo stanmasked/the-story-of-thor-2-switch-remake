@@ -52,7 +52,7 @@ def count_known_sp_adjustments(data: bytes, start: int, end: int) -> int:
         if (
             word & 0xFF00 == 0x7F00
             or word & 0xFF0F == 0x2F06
-            or word & 0xF0FF == 0x6006 and ((word >> 8) & 0xF) == 15
+            or word & 0xF0FF == 0x60F6
             or word & 0xF00F == 0x6003 and ((word >> 8) & 0xF) == 15
             or word & 0xFF0F in (0x3F0C, 0x3F08)
         ):
