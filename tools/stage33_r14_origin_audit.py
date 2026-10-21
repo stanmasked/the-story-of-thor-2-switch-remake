@@ -40,31 +40,40 @@ def r14_direct_write(opcode: int) -> bool:
 
 
 def preceding_r14_save(data: bytes, call: int, max_back: int = 256) -> dict | None:
-    """Find nearest PUSH R14 followed closely by MOV R4,R14.
+    """Match the *nearest* R4->R14 assignment with its own PUSH R14.
 
-    Never treat an apparent epilogue on a different path as actually executed;
-    report intervening lexical writes separately.
+    Never silently fall back to a prior function when the closest save/copy
+    is incomplete. A special existing-R4 wrapper is a hard entry boundary.
     """
     if call < 2 or call > len(data) or call & 1:
         return None
-    for start in range(call - 2, max(-2, call - max_back - 2), -2):
-        if be16(data, start) != PUSH_R14:
-            continue
-        initializers = [
-            pos for pos in range(start + 2, min(start + 14, call), 2)
-            if be16(data, pos) == COPY_ENTRY_R4_TO_R14
-        ]
-        if not initializers:
-            continue
-        init = initializers[0]
-        writes = sum(
-            r14_direct_write(be16(data, pos)) or be16(data, pos) == PUSH_R14
-            for pos in range(init + 2, call, 2)
-        )
-        return {"prologue": start, "initialization": init,
-                "intervening_recognized_r14_writes": writes}
+    if (call >= 8
+            and be16(data, call - 8) == SAVE_PR
+            and be16(data, call - 4) == ALLOCATE_WORD
+            and be16(data, call - 2) == WRITE_R4_AT_SP):
+        return None
+    low = max(0, call - max_back)
+    for pos in range(call - 2, low - 1, -2):
+        opcode = be16(data, pos)
+        if opcode == COPY_ENTRY_R4_TO_R14:
+            pushes = [
+                start for start in range(max(low, pos - 12), pos, 2)
+                if be16(data, start) == PUSH_R14
+            ]
+            if not pushes:
+                return None
+            begin = pushes[-1]
+            writes = sum(
+                r14_direct_write(be16(data, p))
+                or be16(data, p) == PUSH_R14
+                for p in range(pos + 2, call, 2)
+            )
+            return {"prologue": begin, "initialization": pos,
+                    "intervening_recognized_r14_writes": writes}
+        if opcode == PUSH_R14:
+            # A new prologue cannot borrow an older copy from another routine.
+            return None
     return None
-
 
 def wrapper_uses_incoming_r4(data: bytes, literal_load: int, call: int) -> bool:
     """Special wrapper does not assign to R4 before an indirect JSR.
