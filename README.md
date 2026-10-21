@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 43 — reproducible, PRIVATE SH-2 breakpoints can now be derived from the owner's original Saturn ISO for pool allocation, 276-byte copy, index-38 word store and both 68-function indirect dispatchers (entries and JMP targets). An address-based snapshot checker rejects incorrect clones, targets and false slot-39 selection through the selected-cell anchor without an explicit intervening index write. The tool has NOT captured any live emulator execution or VDP1 output.** This repository contains research tools, not a playable game.
+**Status: Stage 44 — the original Saturn executable contains six PC-relative loads of the VDP1 VRAM base (0x25C00000) and three of the VDP1 register base (0x25D00000). An offline private 512-KiB VDP1 VRAM parser now follows 32-byte command entries with JP/END/call/return semantics and compares command-list changes between two supplied dumps. This is NOT yet a live capture or proof that handler 39 writes VDP1 commands.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -55,8 +55,9 @@ Python 3.11+ and only the standard library:
     python tools/stage41_pool_readers.py "/private/The Story of Thor 2.iso" -o stage41.json
     python tools/stage42_pool_dispatch_trace_contract.py "/private/The Story of Thor 2.iso" -o stage42.json
     python tools/stage43_private_watchpoints.py "/private/The Story of Thor 2.iso" --manifest-private /private/thor43.private-watchpoints.json -o /private/stage43_redacted.json
+    python tools/stage44_vdp1_vram_audit.py "/private/The Story of Thor 2.iso" -o /private/stage44_static_summary.json
 
-Stages 01–07 and 09–43 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–44 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -101,10 +102,11 @@ Stages 01–07 and 09–43 report structural metadata and aggregate statistics o
 - **Stage 40:** resolves the returned-R0 helper to a slot selector scanning up to 43 records of 276 bytes each. It checks each record's first word for zero, returns null if no slot remains, and returns the selected slot pointer otherwise. A second helper copies 69 long words (276 bytes) from saved input R13 to newly returned R14; afterwards the writer changes R14+7 and stores index 38 in R14+126.
 - **Stage 41:** finds 57 PC-relative loads of the pool base and verifies four independent R4-relative readers of a first-word record marker and word field +126, advancing by the same 276-byte stride (11 comparisons against 4, 21 and 36). A second static function scans 43 slots for a free pointer without marking it.
 - **Stage 42:** confirms the two 68-entry dispatcher entry prologues copy R4 into R14 before indexed lookup. No direct BSR/BRA/conditional/PC-literal reference to those exact entry points has established that the caller passes the Stage40 cloned pool object. Introduces a symbolic trace validator; no real emulator observations exist.
-- **Stage 43:** derives seven PRIVATE debugger PC watchpoint roles directly from the original ISO (allocation return, copy entry, index store, both dispatch entries and both JMPs), writes a mode-0600 local manifest, and checks supplied physical pointer/register snapshots. Index 38 selects function 39 from the table start only; the selected-cell anchor requires a separately observed 38-to-0 write before the dispatch. All reports redact actual addresses, and a consistent synthetic trace is never claimed as real Saturn or VDP1 evidence.
+- **Stage 43:** derives seven PRIVATE debugger PC watchpoint roles directly from the original ISO (allocation return, copy entry, index store, both dispatch entries and both JMPs), writes a mode-0600 local manifest, and checks supplied physical pointer/register snapshots. No real emulator trace was obtained.
+- **Stage 44:** finds six PC-relative loads of the VDP1 VRAM base and three of the VDP1 register base in the original executable. Adds a private, offline 512-KiB VRAM command-list parser for END/JP/skip/call/return/loop analysis and before-after comparison of reachable 32-byte command entries. Static address loads and untrusted dumps are not hardware-execution or handler-39 provenance proof.
 
-Stages 10–43 add 697 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–44 add 730 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
