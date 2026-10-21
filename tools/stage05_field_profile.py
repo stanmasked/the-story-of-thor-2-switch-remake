@@ -114,8 +114,26 @@ def six_byte_table_profile(section: bytes) -> dict:
     return result
 
 
+def candidate_reference_profile(items: list[bytes], field_pos: int, third_size: int) -> dict:
+    """Summarize whether one BE16 field is compatible with a third-block reference."""
+    values = [int.from_bytes(item[field_pos:field_pos + 2], 'big') for item in items]
+    in_bounds = sum(value + ITEM_WIDTH <= third_size for value in values)
+    aligned = sum(value % 8 == 0 for value in values)
+    return {
+        'field_byte_offset_zero_based': field_pos,
+        'unique_values': len(set(values)),
+        'zero_value_count': values.count(0),
+        'repeated_occurrences_beyond_first': len(values) - len(set(values)),
+        'in_bounds_with_eight_byte_margin_count': in_bounds,
+        'in_bounds_with_eight_byte_margin_fraction': round(in_bounds / len(values), 6),
+        'aligned_to_eight_count': aligned,
+        'aligned_to_eight_fraction': round(aligned / len(values), 6),
+        'interpretation': 'candidate only; offset/identifier semantics not proven',
+    }
+
+
 def profile_items(items: list[bytes], third_size: int) -> dict:
-    """Profile eight-byte elements and candidate third-section reference field."""
+    """Profile eight-byte elements and candidate third-section reference fields."""
     if not items:
         return {'item_count': 0}
     if any(len(item) != ITEM_WIDTH for item in items):
@@ -129,23 +147,14 @@ def profile_items(items: list[bytes], third_size: int) -> dict:
             'byte_offset_zero_based': pos,
             **word_profile([int.from_bytes(item[pos:pos + 2], 'big') for item in items]),
         })
-    candidates = [int.from_bytes(item[2:4], 'big') for item in items]
-    in_bounds = sum(value + ITEM_WIDTH <= third_size for value in candidates)
-    aligned = sum(value % 8 == 0 for value in candidates)
+    candidates = [candidate_reference_profile(items, pos, third_size) for pos in (0, 2)]
     return {
         'item_count': len(items),
         'byte_fields': byte_fields,
         'big_endian_word_fields': word_fields,
-        'candidate_third_section_reference': {
-            'field_byte_offset_zero_based': 2,
-            'unique_values': len(set(candidates)),
-            'repeated_occurrences_beyond_first': len(candidates) - len(set(candidates)),
-            'in_bounds_with_eight_byte_margin_count': in_bounds,
-            'in_bounds_with_eight_byte_margin_fraction': round(in_bounds / len(candidates), 6),
-            'aligned_to_eight_count': aligned,
-            'aligned_to_eight_fraction': round(aligned / len(candidates), 6),
-            'interpretation': 'candidate only; offset/identifier semantics not proven',
-        },
+        'candidate_third_section_references': candidates,
+        # Backwards-compatible alias: offset 2 is the more strongly aligned field.
+        'candidate_third_section_reference': candidates[1],
     }
 
 
@@ -154,13 +163,19 @@ def analyze(image: Path) -> dict:
     containers = []
     strict_item_total = 0
     all_item_total = 0
-    strict_aligned = 0
-    strict_in_bounds = 0
-    strict_unique_fields: set[int] = set()
+    candidate_aggregate = {
+        pos: {'count': 0, 'unique_values': set(), 'in_bounds': 0, 'aligned': 0, 'zero_count': 0}
+        for pos in (0, 2)
+    }
     six_chain_count = 0
     six_record_total = 0
-    direct_cross_match_values = 0
-    direct_cross_match_items = 0
+    cross_matches = {
+        candidate_pos: {
+            row_pos: {'unique_value_matches_summed_per_container': 0, 'item_occurrences': 0}
+            for row_pos in (0, 2, 4)
+        }
+        for candidate_pos in (0, 2)
+    }
     entropy_values = []
     zero_fractions = []
 
@@ -189,22 +204,30 @@ def analyze(image: Path) -> dict:
             if section2.get('six_byte_chain'):
                 six_chain_count += 1
                 six_record_total += section2['record_count']
-                row_words = set()
                 starts = [int.from_bytes(sections[1][2 + i * 2:4 + i * 2], 'big')
                           for i in range(section2['indexed_slots'])]
                 starts = [v for v in starts if v not in MISSING]
-                for start in starts:
-                    row = sections[1][start:start + 6]
-                    row_words.update(int.from_bytes(row[pos:pos + 2], 'big') for pos in (0, 2, 4))
-                candidates = [int.from_bytes(item[2:4], 'big') for item in items]
-                direct_cross_match_values += len(set(candidates) & row_words)
-                direct_cross_match_items += sum(v in row_words for v in candidates)
-            candidate = item_summary.get('candidate_third_section_reference', {})
+                rows = [sections[1][start:start + 6] for start in starts]
+                row_values_by_pos = {
+                    row_pos: [int.from_bytes(row[row_pos:row_pos + 2], 'big') for row in rows]
+                    for row_pos in (0, 2, 4)
+                }
+                for candidate_pos in (0, 2):
+                    values = [int.from_bytes(item[candidate_pos:candidate_pos + 2], 'big') for item in items]
+                    for row_pos, row_values in row_values_by_pos.items():
+                        row_value_set = set(row_values)
+                        cross_matches[candidate_pos][row_pos]['unique_value_matches_summed_per_container'] += len(set(values) & row_value_set)
+                        cross_matches[candidate_pos][row_pos]['item_occurrences'] += sum(v in row_value_set for v in values)
             if strict_container:
                 strict_item_total += len(items)
-                strict_aligned += candidate.get('aligned_to_eight_count', 0)
-                strict_in_bounds += candidate.get('in_bounds_with_eight_byte_margin_count', 0)
-                strict_unique_fields.update(int.from_bytes(item[2:4], 'big') for item in items)
+                for pos in (0, 2):
+                    values = [int.from_bytes(item[pos:pos + 2], 'big') for item in items]
+                    aggregate = candidate_aggregate[pos]
+                    aggregate['count'] += len(values)
+                    aggregate['unique_values'].update(values)
+                    aggregate['in_bounds'] += sum(value + ITEM_WIDTH <= len(sections[2]) for value in values)
+                    aggregate['aligned'] += sum(value % 8 == 0 for value in values)
+                    aggregate['zero_count'] += values.count(0)
             all_item_total += len(items)
             containers.append({
                 'path': entry['path'],
@@ -216,6 +239,20 @@ def analyze(image: Path) -> dict:
                 'third_section_sample': sample,
             })
 
+    candidate_summary = {}
+    for pos, aggregate in candidate_aggregate.items():
+        count = aggregate['count']
+        candidate_summary[str(pos)] = {
+            'field_byte_offset_zero_based': pos,
+            'item_count': count,
+            'unique_values_across_strict_containers': len(aggregate['unique_values']),
+            'zero_value_count': aggregate['zero_count'],
+            'in_bounds_with_eight_byte_margin_count': aggregate['in_bounds'],
+            'aligned_to_eight_count': aggregate['aligned'],
+            'aligned_to_eight_fraction': round(aggregate['aligned'] / count, 6) if count else None,
+            'interpretation': 'candidate only; offset/identifier semantics not proven',
+        }
+
     return {
         'schema_version': 1,
         'stage': 'stage05_field_profile_and_section_cross_checks',
@@ -225,24 +262,18 @@ def analyze(image: Path) -> dict:
         'strict_grammar_containers': sum(1 for item in containers if item['all_records_match_stage04_grammar']),
         'strict_grammar_items': strict_item_total,
         'all_individually_matching_items': all_item_total,
-        'strict_candidate_reference_field': {
-            'unique_values_across_strict_containers': len(strict_unique_fields),
-            'in_bounds_with_eight_byte_margin_count': strict_in_bounds,
-            'aligned_to_eight_count': strict_aligned,
-            'aligned_to_eight_fraction': round(strict_aligned / strict_item_total, 6) if strict_item_total else None,
-            'interpretation': 'strong structural candidate only; not confirmed as a pointer',
-        },
+        'strict_candidate_reference_fields': candidate_summary,
         'six_byte_chains': six_chain_count,
         'six_byte_records': six_record_total,
-        'direct_cross_matches_between_candidate_field_and_six_byte_words': {
-            'matching_unique_values': direct_cross_match_values,
-            'matching_item_occurrences': direct_cross_match_items,
+        'cross_matches_between_candidate_fields_and_six_byte_words': {
+            str(candidate_pos): {str(row_pos): result for row_pos, result in row_fields.items()}
+            for candidate_pos, row_fields in cross_matches.items()
         },
         'third_section_sample_entropy_range': [min(entropy_values), max(entropy_values)] if entropy_values else None,
         'third_section_sample_zero_fraction_range': [min(zero_fractions), max(zero_fractions)] if zero_fractions else None,
         'containers': containers,
         'limitations': [
-            'Candidate field may be a relative offset, ID or packed value; semantics are not proven.',
+            'Candidate fields may be relative offsets, IDs or packed values; semantics are not proven.',
             'No exact offsets, raw byte values, records, sprites, maps, audio or video are exported.',
             'Low sample entropy does not prove an uncompressed image format.',
             'No asset decoder, native game engine or Switch NRO has been implemented.',
