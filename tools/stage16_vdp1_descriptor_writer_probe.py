@@ -125,7 +125,7 @@ def descriptor_writer_candidates(data: bytes) -> list[dict]:
         ):
             continue
 
-        # The source address is base + index*8; the per-source count is argument >> 3.
+        # The source address is base + index*8; the per-source count is the R5 value >> 3.
         source_scale = False
         for offset in range(initial_pointer_load + 2, source_store, 2):
             if (
@@ -178,7 +178,7 @@ def summarize_writer_analysis(data: bytes) -> dict:
         "source_address_uses_base_plus_index_times_eight": bool(
             candidates and candidates[0]["source_scale_confirmed"]
         ),
-        "per_source_count_is_argument_shifted_right_by_three": bool(
+        "per_source_count_is_r5_value_shifted_right_by_three": bool(
             candidates and candidates[0]["per_source_count_shift_right_count"] == 3
         ),
         "global_budget_incremented_once_per_descriptor": bool(
@@ -187,7 +187,7 @@ def summarize_writer_analysis(data: bytes) -> dict:
         "buffer_pointer_advanced_by_eight_bytes": bool(
             candidates and candidates[0]["pointer_advance_confirmed"]
         ),
-        "accounting_invariant_needs_caller_validation": bool(
+        "accounting_invariant_needs_r5_dataflow_validation": bool(
             candidates and candidates[0]["per_source_count_shift_right_count"] == 3
         ),
         "interpretation": (
