@@ -43,3 +43,9 @@ stage09.json
 *private-snapshots*.json
 *private-trace*.json
 *private-observations*.json
+
+# Stage44: prohibit committing raw VDP1 VRAM dumps and memory captures.
+*.vram
+*.vrmdump
+*private-vdp1-*.dat
+*private-vram*.json
