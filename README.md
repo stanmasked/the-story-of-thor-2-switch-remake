@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 27 — the Stage26 helper has a verified null/rejected-data arm that clears seven bytes at input structure offsets +31..+37. The final two bytes are written by MOV.W in a BRA delay slot. Actual contents of the nested structure, normal-path semantics and sprite format remain unknown.** This repository contains research tools, not a playable game.
+**Status: Stage 28 — the nonzero nested-data helper path now has a verified type-dependent byte order for input fields +31/+32, two source-value left shifts, and two independent conversion groups gated by 16-bit sentinel 0x0100 at +88/+90. Source semantics and the JSR conversion function remain unknown.** This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -39,8 +39,9 @@ Python 3.11+ and only the standard library:
     python tools/stage25_r4_provenance_probe.py "/private/The Story of Thor 2.iso" -o stage25.json
     python tools/stage26_helper_r4_nested_pointer.py "/private/The Story of Thor 2.iso" -o stage26.json
     python tools/stage27_helper_zero_clear.py "/private/The Story of Thor 2.iso" -o stage27.json
+    python tools/stage28_helper_nonzero_fields.py "/private/The Story of Thor 2.iso" -o stage28.json
 
-Stages 01–07 and 09–27 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Stages 01–07 and 09–28 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -69,10 +70,11 @@ Stages 01–07 and 09–27 report structural metadata and aggregate statistics o
 - **Stage 24:** verifies one complete loop structure linking R4+1 to a byte counter at SP+56; after each pass it is decremented and checked as signed, with a backward BRA to the loop head and a NOP delay slot. A pure counter model is tested, not a measured game iteration count.
 - **Stage 25:** confirms one function prologue saving the entry R4 pointer in R13 and a later BSR passing R13 back through R4 in its delay slot. One branch-free loop prefix leads to an AND 0x3F rewrite of SP+20.
 - **Stage 26:** proves the Stage25 helper copies incoming R4 to R14, reads a 32-bit field at memory[R14+160] into R4 before its first conditional branch, tests for null, then restores PR/R12/R13/R14, but not R4, in its matched return.
-- **Stage 27:** confirms a guarded fallback arm clearing seven bytes at +31..+37 in the original input structure: five byte stores, followed by a word store at +36 in the delay slot of BRA to the shared epilogue. This does not establish the fields' game-level meaning.
+- **Stage 27:** confirms a guarded fallback arm clearing seven bytes at +31..+37 in the original input structure: five byte stores, followed by a word store at +36 in the delay slot of BRA to the shared epilogue.
+- **Stage 28:** validates the nonzero arm writing the same fields from nested data: byte order of +31/+32 reverses when the signed type byte is 3, source values for +35 and +36 are shifted left, and two conversion groups of 2 and 4 JSR @R13 calls are skipped separately when 16-bit fields +88/+90 equal 0x0100. The conversion routine and field meaning remain unknown.
 
-Stages 10–27 add 228 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+Stages 10–28 add 252 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
 
-Reports: Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Reports: Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
