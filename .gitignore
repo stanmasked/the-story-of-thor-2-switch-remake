@@ -88,3 +88,8 @@ stage48_redacted.json
 # Stage55: private Yabause/RetroArch launch plan and environment evidence.
 *private-yabause-launch*.json
 *private-hle-launch*.json
+
+# Stage59: raw VDP2 CRAM, register snapshots and color-palette metadata.
+*.private-cram
+*.private-vdp2-regs
+*private-palette-audit*.json
