@@ -14,6 +14,7 @@ from stage67_vdp1_producer_callers import (
     find_global_field98_guards,
     find_pattern,
     summarize,
+    find_stack60_descriptor_slot_candidates,
 )
 
 
@@ -101,6 +102,24 @@ def fixture():
         put_bsr(data, call, PRODUCER_ENTRY)
         put16(data, call + 2, 0x64E3)
 
+    # Synthetic nested pointer -> SP+60 -> index*8 + base pointer chain.
+    put_movw_pc(data, 0x180, 0, 0x220, 0x00B0)
+    put16(data, 0x182, 0xE202)
+    put16(data, 0x184, 0x09DE)  # MOV.L @(R0,R13),R9
+    put16(data, 0x1A0, 0x6291)  # MOV.W @R9,R2
+    put16(data, 0x1A2, 0xE03C)  # MOV #60,R0
+    put16(data, 0x1A4, 0x0F25)  # MOV.W R2,@(R0,SP)
+    put16(data, 0x1C0, 0xE03C)  # MOV #60,R0
+    put16(data, 0x1C2, 0x6382)
+    put16(data, 0x1C4, 0x02FD)  # MOV.W @(R0,SP),R2
+    put_movw_pc(data, 0x1C6, 0, 0x240, 0x0009)
+    put16(data, 0x1C8, 0x622D)  # MOV.W @(R0,R2),R2
+    put16(data, 0x1CA, 0x01DE)  # MOV.L @(R0,R13),R1
+    put16(data, 0x1CC, 0x4208)  # SHLL2 R2
+    put16(data, 0x1CE, 0x4200)  # SHLL R2
+    put16(data, 0x1D0, 0x321C)  # ADD R1,R2
+    put16(data, 0x1D2, 0x2322)  # MOV.L R3,@R2
+
     return bytes(data)
 
 
@@ -142,6 +161,24 @@ class Stage67ProducerCallerTests(unittest.TestCase):
         put16(raw, 0x82, 0x8900)  # BT targets the BSR delay slot at 0x86
         self.assertEqual(find_global_field98_guards(bytes(raw), PRODUCER_ENTRY), [])
 
+    def test_finds_stack60_nested_pointer_and_scaled_slot_address(self):
+        chains = find_stack60_descriptor_slot_candidates(fixture())
+        self.assertEqual(len(chains), 1)
+        self.assertTrue(chains[0]["nested_pointer_field_0xB0"])
+        self.assertTrue(chains[0]["stack_slot_SP_plus_60"])
+        self.assertTrue(chains[0]["descriptor_slot_base_field_plus_9"])
+        self.assertTrue(chains[0]["index_scale_8"])
+
+    def test_stack60_chain_requires_nested_pointer_field(self):
+        raw = bytearray(fixture())
+        put16(raw, 0x220, 0x00AC)
+        self.assertEqual(find_stack60_descriptor_slot_candidates(bytes(raw)), [])
+
+    def test_stack60_chain_requires_final_descriptor_store(self):
+        raw = bytearray(fixture())
+        put16(raw, 0x1D2, 0x2323)
+        self.assertEqual(find_stack60_descriptor_slot_candidates(bytes(raw)), [])
+
     def test_full_summary_reconciles_pointer_chain(self):
         result = summarize(fixture())
         self.assertEqual(result["descriptor_writer_guard_candidates"], 1)
@@ -159,6 +196,8 @@ class Stage67ProducerCallerTests(unittest.TestCase):
         })
         self.assertEqual(result["global_state_field_0x98_comparison_candidates"], 1)
         self.assertEqual(result["field_equality_branches_skipping_producer_call"], 1)
+        self.assertEqual(result["stack_SP_plus_60_nested_pointer_to_descriptor_slot_candidates"], 1)
+        self.assertEqual(result["descriptor_slot_address_uses_R13_plus_9_and_index_times_8"], 1)
 
     def test_non_r14_delay_slot_is_not_counted_as_forwarding(self):
         raw = bytearray(fixture())
