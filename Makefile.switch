@@ -3,6 +3,10 @@
 include $(DEVKITPRO)/libnx/switch_rules
 
 TARGET := thor2-stage63
+APP_TITLE := Thor2 Native Sandbox
+APP_AUTHOR := RIKITU LAB
+APP_VERSION := 0.1.0
+NO_ICON := 1
 BUILD := build-switch
 SOURCES := native/platform
 INCLUDES := native
