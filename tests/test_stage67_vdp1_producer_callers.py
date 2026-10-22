@@ -137,6 +137,11 @@ class Stage67ProducerCallerTests(unittest.TestCase):
         put_bsr(raw, 0x84, 0x120)
         self.assertEqual(find_global_field98_guards(bytes(raw), PRODUCER_ENTRY), [])
 
+    def test_field_guard_must_skip_call_delay_slot(self):
+        raw = bytearray(fixture())
+        put16(raw, 0x82, 0x8900)  # BT targets the BSR delay slot at 0x86
+        self.assertEqual(find_global_field98_guards(bytes(raw), PRODUCER_ENTRY), [])
+
     def test_full_summary_reconciles_pointer_chain(self):
         result = summarize(fixture())
         self.assertEqual(result["descriptor_writer_guard_candidates"], 1)
