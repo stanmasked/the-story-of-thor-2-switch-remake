@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 47 — added a bounded *static cross-check* of the Stage16 descriptor-writer candidate against the Stage46 VDP1 submit gate, comparing the staging buffer, pending count and pointer-slot addresses, checking the capacity-branch destination, and enumerating short direct flag/count stores. No original ISO was reanalysed in this session; source-buffer provenance, runtime execution and handler-39 linkage remain unproven.**
+**Status: Stage 48 — added a private offline VDP1 copy-witness validator, with 39 new synthetic tests. It checks the R5 budget per 32-byte copied command, reconstructs expected VRAM writes from optional private source bytes, and compares before/after dumps. This is an offline consistency tool, not a live Saturn execution trace or playable remake.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
@@ -14,6 +14,7 @@ Python 3.11+ and only the standard library:
 
     python -m unittest discover -s tests -v
     python -m compileall -q tools
+    # Stage48 requires private VRAM snapshots; usage and manifest in docs/STAGE48_REPORT_RU.md
     python tools/inspect_saturn_iso.py "/private/The Story of Thor 2.iso" -o stage01.json
     python tools/stage02_probe.py "/private/The Story of Thor 2.iso" -o stage02.json
     python tools/stage03_index_tables.py "/private/The Story of Thor 2.iso" -o stage03.json
@@ -114,8 +115,10 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 
 - **Stage 47:** cross-checks the prior Stage16 8-byte descriptor writer against the Stage46 gate and Stage15 address constants, audits the capacity-branch destination, and counts bounded direct status/count stores. All tests are synthetic; original ISO cross-stage matches and execution are not yet attested.
 
-Stages 10–47 include the new Stage47 synthetic suite in addition to previous suites. GitHub CI runs synthetic tests without the original disc. GitHub CI runs synthetic tests without access to the original disc.
+- **Stage 48:** adds a local-only VDP1 copy-witness validator: bounded manifest with status, pre/post pending count, destination indices and per-descriptor command counts; optional packed private source blocks; expected VRAM replay and byte-difference checks; no original assets or runtime attestation.
 
-Reports: Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Stages 10–48 are validated in synthetic-only GitHub CI; original Saturn material is never uploaded.
+
+Reports: Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
