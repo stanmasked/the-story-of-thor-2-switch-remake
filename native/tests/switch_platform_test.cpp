@@ -75,6 +75,18 @@ int main() {
         assert(invalid_zero_frequency.advance(100) == 0);
     }
     {
+        // A 1000-Hz source is not divisible by 60. The clock must preserve
+        // fractional time and still produce exactly 600 steps over 10 seconds.
+        thor2::platform::FixedStepClock clock(1000, 60, 5);
+        assert(clock.valid());
+        clock.reset(0);
+        std::uint32_t total_steps = 0;
+        for (std::uint64_t now = 10; now <= 10000; now += 10)
+            total_steps += clock.advance(now);
+        assert(total_steps == 600);
+        assert(clock.dropped_ticks() == 0);
+    }
+    {
         // Constant gameplay input must produce the same state at 30, 60 and
         // 120 Hz render-loop cadences when all runs cover the same elapsed time.
         const auto run_for_one_second = [](std::uint64_t render_interval) {
