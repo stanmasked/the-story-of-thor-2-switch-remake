@@ -20,10 +20,9 @@ APP_VERSION  := 0.1.0
 NO_ICON      := 1
 
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
-CFLAGS := -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections \
-          $(ARCH) $(DEFINES)
-CFLAGS += -D__SWITCH__
-CXXFLAGS := $(CFLAGS) -std=gnu++17 -fexceptions
+CFLAGS = -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections \
+         $(ARCH) $(DEFINES) $(INCLUDE) -D__SWITCH__
+CXXFLAGS = $(CFLAGS) -std=gnu++17 -fexceptions
 ASFLAGS := -g $(ARCH)
 LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) \
           -Wl,-Map,$(notdir $*.map)
