@@ -19,7 +19,7 @@ from stage48_vdp1_copy_witness import (
     VRAM_BYTES, COMMAND_BYTES, load_manifest, audit_witness,
 )
 from stage49_sh2_vdp1_trace_contract import (
-    MAX_COMMANDS_IN_TRACE, load_jsonl, compare_trace,
+    MAX_COMMANDS_IN_TRACE, MAX_TRACE_BYTES, load_jsonl, compare_trace,
 )
 from stage50_sh2_load_mapping_evidence import (
     HIGH_WORK_RAM_BYTES, summarize as summarize_ram,
@@ -159,7 +159,7 @@ def audit_bundle(program: bytes, ram: bytes, before: bytes, after: bytes,
     return {
         "schema_version": 1,
         "stage": "stage52_private_saturn_capture_bundle_audit",
-        "declared_emulator_build_identified_by_hash": True,
+        "emulator_build_sha256_declared_by_operator": True,
         "declared_bios_mode": session["emulator"]["bios_mode"],
         "declared_frame_order_valid": timeline["frame_before"] <= timeline["frame_after"],
         "declared_cycle_order_valid": True,
@@ -209,6 +209,8 @@ def run_private(iso: Path, session_path: Path, ram: Path,
         raise ValueError("High Work RAM requires a full 1-MiB dump")
     if before.stat().st_size != VRAM_BYTES or after.stat().st_size != VRAM_BYTES:
         raise ValueError("VDP1 VRAM snapshots must both be 524288 bytes")
+    if trace_path.stat().st_size > MAX_TRACE_BYTES:
+        raise ValueError("raw SH-2 trace exceeds safe input size")
     manifest = load_manifest(manifest_path)
     command_count = sum(item["copy_count"] for item in manifest["descriptors"])
     if command_count > MAX_COMMANDS_IN_TRACE:
