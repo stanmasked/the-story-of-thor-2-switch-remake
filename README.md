@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 49 — privacy-preserving offline SH-2 trace validation added for the original Stage45/46 VDP1 submission path, using exact PC roles and eight longword stores per 32-byte command. Forty-two new synthetic-only tests cover ordering, registers, VRAM write addresses and optional source word values. A real emulator trace has NOT been captured or authenticated.**
+**Status: Stage 50 — added a pinned-original-ISO static preflight and a private SH-2 High Work RAM snapshot mapping validator. The tool checks 12 Stage45/46 code-role signatures against the hypothesized 0x06004000 load address and rejects ambiguous full matches. No emulator was available here, and no genuine live RAM dump or gameplay trace was captured.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
@@ -119,8 +119,10 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 
 - **Stage 49:** adds a private JSONL SH-2 instruction-event witness comparing PC roles, Stage45 per-command eight 32-bit VDP1 stores, R5 count, negative submission flag, and optional exact source words. Not an authenticated Saturn trace. See docs/STAGE49_REPORT_RU.md.
 
-Stages 10–49 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+- **Stage 50:** adds a private snapshot preflight that checks 12 Stage45/46 instruction-role signatures in a full 1-MiB SH-2 high-work-RAM dump and detects relocated/duplicated code images. Matching bytes do not establish runtime execution. See docs/STAGE50_REPORT_RU.md.
 
-Reports: Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Stages 10–50 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+
+Reports: Stage 50 (RU), Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
