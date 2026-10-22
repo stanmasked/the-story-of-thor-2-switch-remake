@@ -5,7 +5,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from stage75_indirect_services_count_provenance import LENGTH_SOURCE_GLOBAL
-from stage76_length_field_feedback_cfg import _direct_cfg_states_at_targets
+from stage76_length_field_feedback_cfg import (
+    _direct_cfg_states_at_targets,
+    _find_routine_prologues,
+)
 
 
 LENGTH_ADDRESS = 0x0609651C
@@ -45,6 +48,19 @@ def all_paths_seeded_fixture():
 
 
 class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
+    def test_complete_routine_prologue_is_required(self):
+        data = bytearray(0x100)
+        entry = 0x20
+        opcodes = (
+            0x2FE6, 0xE072, 0xD23E, 0x2FD6, 0x2FC6, 0x2FB6,
+            0x2FA6, 0x2F96, 0x2F86, 0xE801, 0x4F22, 0x7FF8,
+        )
+        for index, opcode in enumerate(opcodes):
+            put16(data, entry + index * 2, opcode)
+        self.assertEqual(_find_routine_prologues(data), [entry])
+        put16(data, entry, 0x0009)
+        self.assertEqual(_find_routine_prologues(data), [])
+
     def test_all_direct_paths_reach_target_after_zero_and_pointer_seed(self):
         data, entry = all_paths_seeded_fixture()
         states, visited, calls, direct_calls = _direct_cfg_states_at_targets(
