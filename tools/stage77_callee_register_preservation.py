@@ -103,7 +103,7 @@ def _main_path_calls(
 
 def _resolve_indirect_call_target(data: bytes, call_pos: int) -> int | None:
     opcode = _word(data, call_pos)
-    if not _is_jsr(opcode):
+    if not (_is_jsr(opcode) or _is_jmp(opcode)):
         return None
     register = (opcode >> 8) & 0xF
     candidates = []
@@ -128,6 +128,7 @@ def _reachable_function(data: bytes, entry: int, max_nodes: int = 20000) -> dict
     visited = set()
     direct_calls = set()
     indirect_calls = set()
+    indirect_jumps = set()
     indirect_targets = {}
     tail_branches = set()
     returns = set()
@@ -177,6 +178,8 @@ def _reachable_function(data: bytes, entry: int, max_nodes: int = 20000) -> dict
                 queue.append(pos + 4)
             continue
         if _is_jmp(opcode):
+            indirect_jumps.add(pos)
+            indirect_targets[pos] = _resolve_indirect_call_target(data, pos)
             if pos + 2 + 2 <= len(data):
                 visited.add(pos + 2)
             continue
@@ -192,6 +195,7 @@ def _reachable_function(data: bytes, entry: int, max_nodes: int = 20000) -> dict
         "nodes": visited,
         "direct_calls": direct_calls,
         "indirect_calls": indirect_calls,
+        "indirect_jumps": indirect_jumps,
         "indirect_targets": indirect_targets,
         "tail_branches": tail_branches,
         "returns": returns,
@@ -248,15 +252,12 @@ def analyze(image: Path) -> dict:
     function_graphs = {}
     pending = list(main_direct_targets)
     resolved_targets = set()
-    unresolved_indirect_calls = 0
     while pending and len(function_graphs) < 32:
         entry = pending.pop()
         if entry in function_graphs:
             continue
         graph = _reachable_function(data, entry)
         function_graphs[entry] = graph
-        if graph["node_limit_reached"]:
-            unresolved_indirect_calls += 1
         pending.extend(target for target in graph["direct_calls"] if target not in function_graphs)
         for target in graph["indirect_targets"].values():
             if target is None:
@@ -304,8 +305,8 @@ def analyze(image: Path) -> dict:
             "main_unique_direct_callee_targets": len(main_direct_targets),
             "main_indirect_jsr_sites_to_feedback_writers": len(main_indirect_sites),
             "callee_graph_functions_analyzed": len(function_graphs),
-            "nested_indirect_call_targets_resolved": len(resolved_targets),
-            "unresolved_nested_indirect_call_sites": unresolved_indirect_call_sites,
+            "nested_indirect_transfer_targets_resolved": len(resolved_targets),
+            "unresolved_nested_indirect_transfer_sites": unresolved_indirect_call_sites,
             "all_reachable_callee_targets_closed": all_targets_closed,
             "r10_preserved_by_analyzed_callee_graph": r10_write_free,
             "r13_preservation_wrapper_found": r13_saver_verified,
