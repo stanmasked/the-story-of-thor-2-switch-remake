@@ -36,7 +36,7 @@ class Stage78LengthGlobalAliasTests(unittest.TestCase):
         result = _scan_alias_stores_from_load(
             data, 0x20, SOURCE_FIELD_START - 0x0C, 2, max_span=0x40
         )
-        self.assertIn((0x22, 4, "long-displacement"), result["stores"])
+        self.assertIn((0x22, 4, "long-displacement", SOURCE_FIELD_START - 0x0C, SOURCE_FIELD_START), result["stores"])
         self.assertFalse(result["unresolved_indexed"])
 
     def test_word_predecrement_from_adjacent_field_hits_source_field(self):
@@ -46,7 +46,7 @@ class Stage78LengthGlobalAliasTests(unittest.TestCase):
         result = _scan_alias_stores_from_load(
             data, 0x20, SOURCE_FIELD_START + 2, 3, max_span=0x40
         )
-        self.assertIn((0x22, 2, "predecrement"), result["stores"])
+        self.assertIn((0x22, 2, "predecrement", SOURCE_FIELD_START + 2, SOURCE_FIELD_START), result["stores"])
 
     def test_byte_displacement_store_can_overlap_source_word(self):
         data = bytearray(0x100)
@@ -55,7 +55,7 @@ class Stage78LengthGlobalAliasTests(unittest.TestCase):
         result = _scan_alias_stores_from_load(
             data, 0x20, SOURCE_FIELD_START - 8, 1, max_span=0x40
         )
-        self.assertIn((0x22, 1, "byte-displacement"), result["stores"])
+        self.assertIn((0x22, 1, "byte-displacement", SOURCE_FIELD_START - 8, SOURCE_FIELD_START), result["stores"])
 
     def test_clobbered_base_register_does_not_create_false_alias(self):
         data = bytearray(0x100)
@@ -85,7 +85,7 @@ class Stage78LengthGlobalAliasTests(unittest.TestCase):
         result = _scan_alias_stores_from_load(
             data, 0x20, SOURCE_FIELD_START - 0x0C, 2, max_span=0x40
         )
-        self.assertIn((0x24, 4, "long-displacement"), result["stores"])
+        self.assertIn((0x24, 4, "long-displacement", SOURCE_FIELD_START - 0x0C, SOURCE_FIELD_START), result["stores"])
 
 
 if __name__ == "__main__":
