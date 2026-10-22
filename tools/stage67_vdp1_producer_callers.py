@@ -203,7 +203,7 @@ def find_stack60_descriptor_slot_candidates(data: bytes) -> list[dict]:
         if op & 0xF000 != 0x9000 or ((op >> 8) & 0x0F) != 0:
             continue
         literal = mov_w_pc_target(offset_load, op, len(data))
-        if literal is None or be16(data, literal) != 0x00B0:
+        if literal is None or be16(data, literal) != 0x00AC:
             continue
 
         nested_loads = [
@@ -237,7 +237,7 @@ def find_stack60_descriptor_slot_candidates(data: bytes) -> list[dict]:
                     )
                     if (
                         index_literal is None
-                        or be16(data, index_literal) != 0x0009
+                        or be16(data, index_literal) != 0x0098
                         or be16(data, stack_read + 8) != 0x622D  # MOV.W @(R0,R2),R2
                         or be16(data, stack_read + 10) != 0x01DE  # MOV.L @(R0,R13),R1
                         or be16(data, stack_read + 12) != 0x4208  # SHLL2 R2
@@ -249,7 +249,7 @@ def find_stack60_descriptor_slot_candidates(data: bytes) -> list[dict]:
                     candidates.add((offset_load, nested_load, store_position, stack_read))
     return [
         {
-            "nested_pointer_field_0xB0": True,
+            "nested_pointer_field_0xAC": True,
             "stack_slot_SP_plus_60": True,
             "descriptor_slot_base_field_plus_9": True,
             "index_scale_8": True,
