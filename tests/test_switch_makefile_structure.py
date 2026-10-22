@@ -45,9 +45,9 @@ class SwitchMakefileStructureTests(unittest.TestCase):
 
     def test_original_game_assets_are_not_packaged(self):
         self.assertIn("DATA         :=", MAKEFILE)
-        self.assertNotIn("ROMFS :=", MAKEFILE)
-        self.assertNotIn("WILD ARMS", MAKEFILE)
-        self.assertNotIn("Saturn.iso", MAKEFILE)
+        self.assertNotIn("ROMFS", MAKEFILE)
+        self.assertNotIn("The Story of Thor 2.iso", MAKEFILE)
+        self.assertNotIn(".cue", MAKEFILE)
 
 
 if __name__ == "__main__":
