@@ -259,7 +259,7 @@ def _service_entry_audit(data: bytes) -> dict:
             direct_tail_jump and dereference_calls >= 6
         ),
         "service_entry_runtime_contents_resolved": False,
-        "service_entry_initializer_found": False,
+        "service_entry_initialization_path_resolved": False,
         "runtime_service_completion_confirmed": False,
     }
 
