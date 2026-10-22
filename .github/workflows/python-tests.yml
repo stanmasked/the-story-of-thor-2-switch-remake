@@ -8,10 +8,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: \${{ github.workflow }}-\${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  host-validation:
+  validate-and-build:
+    # One hosted runner for host validation and the pinned SDK container.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,35 +56,30 @@ jobs:
             /tmp/thor2-demo.ppm
             /tmp/thor2-demo-status.txt
           retention-days: 14
-
-  switch-nro:
-    runs-on: ubuntu-latest
-    container:
-      image: devkitpro/devkita64:20260219
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify devkitPro and libnx
+      - name: Build Nintendo Switch NRO in pinned devkitPro container
         run: |
-          test -n "$DEVKITPRO"
-          test -f "$DEVKITPRO/libnx/switch_rules"
-          COMPILER="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
-          if [ ! -x "$COMPILER" ]; then
-            echo "Expected compiler not found at: $COMPILER"
-            echo "Contents of devkitPro toolchain directories:"
-            ls -la "$DEVKITPRO"
-            ls -la "$DEVKITPRO/devkitA64/bin" || true
-            find "$DEVKITPRO" -maxdepth 5 -type f -name 'aarch64-none-elf-g++' -print
-            exit 1
-          fi
-          echo "$DEVKITPRO/devkitA64/bin" >> "$GITHUB_PATH"
-          export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
-          command -v aarch64-none-elf-g++
-          command -v make
-          aarch64-none-elf-g++ --version
-      - name: Build Nintendo Switch NRO
-        run: |
-          export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
-          make -f Makefile.switch
+          docker run --rm \
+            --volume "\${GITHUB_WORKSPACE}:/workspace" \
+            --workdir /workspace \
+            devkitpro/devkita64:20260219 \
+            bash -lc '
+              set -euo pipefail
+              test -n "$DEVKITPRO"
+              test -f "$DEVKITPRO/libnx/switch_rules"
+              COMPILER="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+              if [ ! -x "$COMPILER" ]; then
+                echo "Expected compiler not found at: $COMPILER"
+                ls -la "$DEVKITPRO"
+                ls -la "$DEVKITPRO/devkitA64/bin" || true
+                find "$DEVKITPRO" -maxdepth 5 -type f -name "aarch64-none-elf-g++" -print
+                exit 1
+              fi
+              export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
+              command -v aarch64-none-elf-g++
+              command -v make
+              aarch64-none-elf-g++ --version
+              make -f Makefile.switch
+            '
       - name: Verify NRO artifact and public header
         run: |
           test -s thor2-stage63.nro
