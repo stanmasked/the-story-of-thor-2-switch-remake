@@ -62,3 +62,8 @@ stage48_redacted.json
 *private-sh2*.jsonl
 *private-trace*.jsonl
 *private-trace-contract*.json
+
+# Stage50: full private SH-2 RAM snapshots and mapping evidence.
+*.private-snapshot
+*private-load-map*.json
+*private-ram*.dat
