@@ -12,7 +12,7 @@ The original Saturn ISO is processed privately and locally. Do not publish game 
 
 With devkitPro/libnx installed, run `make -f Makefile.switch`. This target builds `thor2-stage63.nro` from the original-asset-free gameplay sandbox. GitHub Actions also runs the adapter host tests and a devkitPro cross-build. Before upload, `tools/verify_nro_header.py` checks the public `NRO0` header and declared image size. A successful build proves compilation and basic container structure only; it does not prove execution on Switch hardware or emulator.
 
-Report: `docs/STAGE63_REPORT_RU.md`. The platform frontend uses a bounded fixed-step clock (60 ticks/s target, max five catch-up steps per render frame) and retains short interact/restart events sampled between simulation ticks; this does not imply 60 FPS until measured on target.
+Report: `docs/STAGE63_REPORT_RU.md`. The platform frontend uses a bounded fixed-step clock (60 ticks/s target, max five catch-up steps per render frame). Its scaled-time accumulator preserves fractional timer ticks when the hardware frequency is not divisible by 60, and it retains short interact/restart events sampled between simulation ticks; this does not imply 60 FPS until measured on target.
 
 ## Repeat the metadata-only investigation
 
