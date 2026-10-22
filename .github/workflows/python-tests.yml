@@ -85,10 +85,16 @@ jobs:
         run: |
           test -n "$DEVKITPRO"
           test -f "$DEVKITPRO/libnx/switch_rules"
+          test -x "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+          echo "$DEVKITPRO/devkitA64/bin" >> "$GITHUB_PATH"
+          export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
           command -v aarch64-none-elf-g++
           command -v make
+          aarch64-none-elf-g++ --version
       - name: Build Nintendo Switch NRO
-        run: make -f Makefile.switch
+        run: |
+          export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
+          make -f Makefile.switch
       - name: Verify NRO artifact exists
         run: |
           test -s thor2-stage63.nro
