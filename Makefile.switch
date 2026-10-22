@@ -29,6 +29,18 @@ LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) \
 LIBS := -lnx -lstdc++ -lm
 LIBDIRS := $(PORTLIBS) $(LIBNX)
 
+# NRO/NACP metadata flags are normally assembled by the stock libnx template.
+# Keep the NACP, but omit the optional icon because this prototype has no artwork.
+ifeq ($(strip $(NO_ICON)),)
+export NROFLAGS += --icon=$(APP_ICON)
+endif
+ifeq ($(strip $(NO_NACP)),)
+export NROFLAGS += --nacp=$(CURDIR)/$(TARGET).nacp
+endif
+ifneq ($(APP_TITLEID),)
+export NACPFLAGS += --titleid=$(APP_TITLEID)
+endif
+
 # The official libnx make pattern uses an outer make for source discovery and
 # an inner make in BUILD for object compilation and NRO/NACP generation.
 ifneq ($(BUILD),$(notdir $(CURDIR)))
