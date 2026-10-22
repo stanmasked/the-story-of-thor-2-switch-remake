@@ -23,7 +23,7 @@ inline bool present_rgba8(const sandbox::Surface& source,
                           std::uint32_t* framebuffer,
                           std::size_t framebuffer_pixels,
                           int width, int height, std::size_t stride_pixels) {
-    if (!framebuffer || width < 4 || height < 3 ||
+    if (!framebuffer || width < 4 || height < 3 || width > 8192 || height > 8192 ||
         stride_pixels < static_cast<std::size_t>(width) ||
         static_cast<std::size_t>(height) >
             std::numeric_limits<std::size_t>::max() / stride_pixels)
