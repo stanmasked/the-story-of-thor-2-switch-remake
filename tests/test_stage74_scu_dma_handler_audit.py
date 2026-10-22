@@ -198,6 +198,20 @@ class Stage74SCUDMAAuditTests(unittest.TestCase):
         self.assertEqual(result["command_count_unresolved_register_assignment_sites"], 1)
         self.assertFalse(result["command_count_global_upper_bound_proven"])
 
+    def test_reset_before_rts_does_not_bound_later_increment(self):
+        data = bytearray(0x180)
+        put_pc_literal_load(data, 0x20, 4, 0x100, COUNT_ADDRESS)
+        put16(data, 0x40, 0xE500)  # MOV #0,R5
+        put16(data, 0x42, 0x2451)  # MOV.W R5,@R4
+        put16(data, 0x44, 0x000B)  # RTS separates the paths
+        put16(data, 0x50, 0x6241)  # MOV.W @R4,R2
+        put16(data, 0x52, 0x7201)  # ADD #1,R2
+        put16(data, 0x54, 0x2421)  # MOV.W R2,@R4
+        result = _audit_command_count(data, COUNT_ADDRESS)
+        self.assertEqual(result["command_count_increment_sites_after_local_zero_reset"], 0)
+        self.assertEqual(result["command_count_increment_sites_without_guard_or_zero_reset"], 1)
+        self.assertFalse(result["command_count_global_upper_bound_proven"])
+
     def test_halfword_marker_and_four_byte_reservation_are_distinguished(self):
         data, _ = terminator_fixture()
         result = _audit_terminator(data, count_formula_verified=True)
