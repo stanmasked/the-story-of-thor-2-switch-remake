@@ -27,7 +27,7 @@ class SwitchMakefileStructureTests(unittest.TestCase):
     def test_compiler_flags_include_exported_include_paths(self):
         self.assertIn("CFLAGS = ", MAKEFILE)
         self.assertIn("$(ARCH) $(DEFINES) $(INCLUDE) -D__SWITCH__", MAKEFILE)
-        self.assertIn("CXXFLAGS = $(CFLAGS) -std=gnu++17 -fexceptions", MAKEFILE)
+        self.assertIn("CXXFLAGS = $(CFLAGS) -std=gnu++17 -fexceptions -Wno-error=missing-field-initializers", MAKEFILE)
 
     def test_nro_metadata_flags_are_explicit_and_outer_only(self):
         self.assertIn("export NROFLAGS += --nacp=$(TOPDIR)/$(TARGET).nacp", MAKEFILE)
