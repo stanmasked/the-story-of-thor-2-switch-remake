@@ -3,6 +3,7 @@ import unittest
 from stage69_vdp1_field_writer_census import (
     count_derivation_window,
     field_write_candidates,
+    metadata_pointer_sentinel_guard_candidates,
     summarize,
 )
 
@@ -30,6 +31,23 @@ def field_writer_fixture() -> bytes:
     put16(data, 16, 0xE405)  # MOV #5,R4
     put_pc_word_r0(data, 18, 0x72, 0x00AC)
     put16(data, 20, 0x0E46)  # MOV.L R4,@(R0,R14)
+    return bytes(data)
+
+
+def metadata_sentinel_fixture(sentinel: int = 0xFFFF) -> bytes:
+    data = bytearray(128)
+    put16(data, 0, 0xD00F)  # MOV.L literal 0x20000002,R0
+    put16(data, 2, 0x4600)  # SHLL R6
+    put16(data, 4, 0xD20F)  # MOV.L literal 0x0000FFFF,R2
+    for pos, word in ((6, 0x6563), (8, 0x354C), (10, 0x055D),
+                      (12, 0x635D), (14, 0x3320), (16, 0x8B0A)):
+        put16(data, pos, word)
+    put16(data, 0x28, 0x901A)  # target: MOV.W literal 0x00AC,R0
+    put16(data, 0x40, 0x2000)
+    put16(data, 0x42, 0x0002)
+    put16(data, 0x44, 0x0000)
+    put16(data, 0x46, sentinel)
+    put16(data, 0x60, 0x00AC)
     return bytes(data)
 
 
@@ -94,6 +112,14 @@ class Stage69FieldWriterCensusTests(unittest.TestCase):
         put_pc_word_r0(data, 2, 0x30, 0x0098)
         put16(data, 4, 0x0E35)  # MOV.W, but source_base expects MOV.L
         self.assertEqual(field_write_candidates(bytes(data)), [])
+
+    def test_recognizes_ffff_sentinel_before_metadata_pointer_path(self):
+        self.assertEqual(metadata_pointer_sentinel_guard_candidates(
+            metadata_sentinel_fixture()), 1)
+
+    def test_rejects_non_ffff_table_sentinel(self):
+        self.assertEqual(metadata_pointer_sentinel_guard_candidates(
+            metadata_sentinel_fixture(0xFFFE)), 0)
 
     def test_recognizes_count_shift_path_without_zero_guard(self):
         result = count_derivation_window(count_window_fixture(), 0)
