@@ -95,5 +95,13 @@ int main() {
     descriptor = TransferDescriptor{0x06091234u, 0xFFFFu, 2};
     assert(!make_transfer_copy_plan(descriptor, &plan));
 
+    // Exact VRAM-sized payload at offset zero is valid; one block more is not.
+    descriptor = TransferDescriptor{0x06091234u, 0, 16384};
+    assert(make_transfer_copy_plan(descriptor, &plan));
+    assert(plan.payload_bytes == kVdp1VramBytes);
+    assert(plan.destination_address == kVdp1VramBase);
+    descriptor.block_count = 16385;
+    assert(!make_transfer_copy_plan(descriptor, &plan));
+
     return 0;
 }
