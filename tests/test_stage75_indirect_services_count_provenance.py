@@ -75,6 +75,7 @@ def count_assignment_fixture():
     put16(data, 0x76, 0x410B)  # JSR @R1
     put16(data, 0x78, 0x2321)  # MOV.W R2,@R3 in the delay slot
     # Two source-global writers with intentionally unresolved value origins.
+    put_pc_literal_load(data, 0x88, 13, 0x320, 0x0609651C)
     put_pc_literal_load(data, 0x90, 2, 0x318, LENGTH_SOURCE_GLOBAL)
     put16(data, 0x92, 0xA0AB)  # BRA; following word is its delay slot
     put16(data, 0x94, 0x22A1)  # MOV.W R10,@R2
@@ -124,15 +125,17 @@ class Stage75IndirectServicesTests(unittest.TestCase):
     def test_r10_writer_requires_zero_seed_and_no_detected_rewrite(self):
         data = count_assignment_fixture()
         self.assertEqual(
-            _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL)[
+            _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL, 0x0609651C)[
                 "length_source_global_writer_r10_zero_seeded_sites"
             ],
             0,
         )
         put16(data, 0x80, 0xEA00)  # MOV #0,R10 before the first source-global store
-        result = _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL)
+        result = _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL, 0x0609651C)
         self.assertEqual(result["length_source_global_direct_word_writer_signatures"], 2)
         self.assertEqual(result["length_source_global_writer_r10_zero_seeded_sites"], 1)
+        self.assertEqual(result["length_source_global_writer_r13_postincrement_sources"], 1)
+        self.assertEqual(result["length_source_global_writer_r13_stream_seeded_sources"], 1)
         self.assertFalse(result["length_source_global_writer_values_resolved"])
 
     def test_dma_mode_register_literal_is_not_assumed_from_other_register_bases(self):
