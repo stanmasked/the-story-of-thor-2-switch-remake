@@ -14,10 +14,10 @@ constexpr u32 kFramebufferWidth = 1280;
 constexpr u32 kFramebufferHeight = 720;
 
 const thor2::platform::ButtonMasks kButtons{
-    HidNpadButton_Left,
-    HidNpadButton_Right,
-    HidNpadButton_Up,
-    HidNpadButton_Down,
+    HidNpadButton_AnyLeft,
+    HidNpadButton_AnyRight,
+    HidNpadButton_AnyUp,
+    HidNpadButton_AnyDown,
     HidNpadButton_A,
     HidNpadButton_B,
     HidNpadButton_Plus
