@@ -70,3 +70,8 @@ stage48_redacted.json
 
 # Stage51: private Saturn boot/header evidence.
 *private-boot-map*.json
+
+# Stage52: raw private session/capture manifest and aggregated local audits.
+*private-session*.json
+*private-capture-audit*.json
+*private-bundle*.json
