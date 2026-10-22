@@ -141,7 +141,7 @@ class Stage73MemoryPathAuditTests(unittest.TestCase):
         self.assertFalse(result["helper_generic_memmove_path_selected_for_callback_arguments"])
         self.assertTrue(result["special_path_sets_transfer_state_flag"])
         self.assertTrue(result["special_path_stores_destination_and_byte_length"])
-        self.assertTrue(result["destination_matches_primary_video_memory_window"])
+        self.assertTrue(result["destination_matches_primary_bbus_window"])
         self.assertTrue(result["special_path_has_two_call_sites"])
         self.assertTrue(result["generic_bytewise_overlap_safe_memmove_signature_verified"])
         self.assertTrue(result["generic_memmove_forward_and_backward_loops_verified"])
