@@ -103,7 +103,7 @@ def fixture():
         put16(data, call + 2, 0x64E3)
 
     # Synthetic nested pointer -> SP+60 -> index*8 + base pointer chain.
-    put_movw_pc(data, 0x180, 0, 0x220, 0x00B0)
+    put_movw_pc(data, 0x180, 0, 0x220, 0x00AC)
     put16(data, 0x182, 0xE202)
     put16(data, 0x184, 0x09DE)  # MOV.L @(R0,R13),R9
     put16(data, 0x1A0, 0x6291)  # MOV.W @R9,R2
@@ -112,7 +112,7 @@ def fixture():
     put16(data, 0x1C0, 0xE03C)  # MOV #60,R0
     put16(data, 0x1C2, 0x6382)
     put16(data, 0x1C4, 0x02FD)  # MOV.W @(R0,SP),R2
-    put_movw_pc(data, 0x1C6, 0, 0x240, 0x0009)
+    put_movw_pc(data, 0x1C6, 0, 0x240, 0x0098)
     put16(data, 0x1C8, 0x622D)  # MOV.W @(R0,R2),R2
     put16(data, 0x1CA, 0x01DE)  # MOV.L @(R0,R13),R1
     put16(data, 0x1CC, 0x4208)  # SHLL2 R2
@@ -164,14 +164,14 @@ class Stage67ProducerCallerTests(unittest.TestCase):
     def test_finds_stack60_nested_pointer_and_scaled_slot_address(self):
         chains = find_stack60_descriptor_slot_candidates(fixture())
         self.assertEqual(len(chains), 1)
-        self.assertTrue(chains[0]["nested_pointer_field_0xB0"])
+        self.assertTrue(chains[0]["nested_pointer_field_0xAC"])
         self.assertTrue(chains[0]["stack_slot_SP_plus_60"])
         self.assertTrue(chains[0]["descriptor_slot_base_field_plus_9"])
         self.assertTrue(chains[0]["index_scale_8"])
 
     def test_stack60_chain_requires_nested_pointer_field(self):
         raw = bytearray(fixture())
-        put16(raw, 0x220, 0x00AC)
+        put16(raw, 0x220, 0x00B0)
         self.assertEqual(find_stack60_descriptor_slot_candidates(bytes(raw)), [])
 
     def test_stack60_chain_requires_final_descriptor_store(self):
