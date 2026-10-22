@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 57 — added a bounded VDP1 sprite geometry and pixel-mode parser based on documented CMDPMOD, CMDSIZE and CMDSRCA command fields. It handles six hardware color modes, 4/8/16bpp raw texel unpacking and 512-KiB VRAM/LUT bounds, with aggregate-only reporting. This does not recover real sprite art without an authenticated private VDP1 capture.**
+**Status: Stage 58 — added private per-scanline VDP1 zero-transparency and two-end-code handling, 4/8-bit color-bank code composition, 16-entry VRAM LUT lookup, and explicit RGB-vs-bank distinction. Corrected Stage57 counting of END-bit terminator records. Aggregate-only results are synthetic/offline: no authenticated original-game VRAM capture, renderer or playable Switch build yet.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
@@ -135,8 +135,10 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 
 - **Stage 57:** decodes VDP1 sprite mode, width, height and source span directly from command metadata, with raw private 4/8/16bpp texel unpacking and no public pixel output. Addresses Stage10's size/depth ambiguity for future real VRAM command captures, not yet for ISO resources. See docs/STAGE57_REPORT_RU.md.
 
-Stages 10–57 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+- **Stage 58:** interprets VDP1 SPD/ECD pixel policy, two end codes per source scanline, 16-color LUT records and raw color-bank codes. Color-bank codes require external VDP2 CRAM before RGB rendering; no original pixels exported. Also propagates corrected Stage57 END-bit sentinel handling. See docs/STAGE58_REPORT_RU.md.
 
-Reports: Stage 57 (RU), Stage 56 (RU), Stage 55 (RU), Stage 54 (RU), Stage 53 (RU), Stage 52 (RU), Stage 51 (RU), Stage 50 (RU), Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Stages 10–58 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+
+Reports: Stage 58 (RU), Stage 57 (RU), Stage 56 (RU), Stage 55 (RU), Stage 54 (RU), Stage 53 (RU), Stage 52 (RU), Stage 51 (RU), Stage 50 (RU), Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
