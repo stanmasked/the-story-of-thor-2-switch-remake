@@ -47,12 +47,13 @@ def all_paths_seeded_fixture():
 class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
     def test_all_direct_paths_reach_target_after_zero_and_pointer_seed(self):
         data, entry = all_paths_seeded_fixture()
-        states, visited, calls = _direct_cfg_states_at_targets(
+        states, visited, calls, direct_calls = _direct_cfg_states_at_targets(
             data, entry, 0x30, {0x30}, LENGTH_ADDRESS
         )
         self.assertEqual(states[0x30], {(True, False, True, False)})
         self.assertGreater(visited, 0)
         self.assertEqual(calls, 0)
+        self.assertEqual(direct_calls, 0)
 
     def test_branch_that_bypasses_zero_seed_blocks_dominance_claim(self):
         data = bytearray(0x100)
@@ -66,7 +67,7 @@ class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
         put16(data, 0x2C, 0x0009)
         put16(data, 0x2E, 0x0009)
         put16(data, 0x30, 0x22A1)
-        states, _, _ = _direct_cfg_states_at_targets(
+        states, _, _, _ = _direct_cfg_states_at_targets(
             data, entry, 0x30, {0x30}, LENGTH_ADDRESS
         )
         self.assertIn((False, False, False, False), states[0x30])
@@ -105,11 +106,12 @@ class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
         put16(data, 0x22, 0x430B)  # JSR @R3
         put16(data, 0x24, 0xE101)  # delay slot
         put16(data, 0x26, 0x22A1)
-        states, _, calls = _direct_cfg_states_at_targets(
+        states, _, calls, direct_calls = _direct_cfg_states_at_targets(
             data, entry, 0x26, {0x26}, LENGTH_ADDRESS
         )
         self.assertEqual(states[0x26], {(True, False, False, False)})
         self.assertEqual(calls, 1)
+        self.assertEqual(direct_calls, 0)
 
 
 if __name__ == "__main__":
