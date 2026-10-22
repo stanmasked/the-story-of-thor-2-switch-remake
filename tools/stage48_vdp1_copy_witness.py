@@ -81,9 +81,10 @@ def audit_witness(manifest: object, before: bytes, after: bytes,
     if source_commands is not None and len(source_commands) != expected_source_size:
         raise ValueError("private command-stream size does not match descriptor copy counts")
 
-    # Stage46 reads global count into R5; Stage45 decrements R5 in the inner
-    # loop on each 32-byte copy (BF/S delay slot), not once per descriptor.
-    budget_agrees = manifest["pending_count_before"] == copies
+    # Stage45 decrements R2 once per 32-byte command, then decrements R5
+    # once per completed 8-byte descriptor in the OUTER loop.
+    # Stage46 supplies the number of descriptors as R5.
+    budget_agrees = manifest["pending_count_before"] == len(records)
     gate_conditions = manifest["status_before"] < 0 and manifest["pending_count_before"] > 0
     reset_agrees = manifest["status_after"] == 0 and manifest["pending_count_after"] == 0
     aligned = sum((d["destination_index"] * INDEX_UNIT_BYTES) % COMMAND_BYTES == 0
@@ -123,7 +124,8 @@ def audit_witness(manifest: object, before: bytes, after: bytes,
         "stage": "stage48_vdp1_copy_witness",
         "descriptor_count": len(records),
         "commands_expected_by_descriptors": copies,
-        "pending_count_matches_commands_not_descriptors": budget_agrees,
+        "pending_count_matches_descriptor_count": budget_agrees,
+        "pending_count_equals_command_count": manifest["pending_count_before"] == copies,
         "pending_count_equals_descriptor_count": manifest["pending_count_before"] == len(records),
         "negative_flag_and_nonzero_count_observed_in_manifest": gate_conditions,
         "post_return_zero_resets_observed_in_manifest": reset_agrees,
