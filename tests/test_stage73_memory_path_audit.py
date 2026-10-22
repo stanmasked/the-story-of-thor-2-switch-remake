@@ -161,7 +161,7 @@ class Stage73MemoryPathAuditTests(unittest.TestCase):
         self.assertTrue(result["helper_generic_memmove_path_selected_for_callback_arguments"])
         self.assertFalse(result["helper_special_path_selected_for_callback_arguments"])
 
-    def test_same_count_field_is_not_inferred_from_adjacent_word(self):
+    def test_exact_field_match_is_distinct_from_adjacent_field(self):
         result = audit_helper_transfer(
             fixture(), CALLBACK_ENTRY, COUNT_FIELD
         )
