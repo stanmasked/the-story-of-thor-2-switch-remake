@@ -11,38 +11,29 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  python-tests:
+  validate-and-build:
+    # One hosted runner for host validation and the pinned SDK container.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Synthetic-only unit tests
+      - name: Synthetic-only Python unit tests
         run: python -m unittest discover -s tests -v
-      - name: Syntax check
+      - name: Python syntax check
         run: python -m compileall -q tools
-
-  native-framebuffer-host:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Compile native ROM-free framebuffer module
+      - name: Compile all native host test programs
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_framebuffer_test.cpp -o /tmp/thor2-vdp1-host-test
-      - name: Run native framebuffer invariants
-        run: /tmp/thor2-vdp1-host-test
-
-  native-gameplay-host:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Compile original-asset-free C++17 gameplay tests and interactive host demo
-        run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/sandbox_test.cpp -o /tmp/thor2-sandbox-test
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/demo/sandbox_cli.cpp -o /tmp/thor2-sandbox
-      - name: Exercise deterministic gameplay, full synthetic goal and rasterizer
-        run: /tmp/thor2-sandbox-test
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/switch_platform_test.cpp -o /tmp/thor2-platform-test
+      - name: Run native framebuffer, gameplay and platform adapter tests
+        run: |
+          /tmp/thor2-vdp1-host-test
+          /tmp/thor2-sandbox-test
+          /tmp/thor2-platform-test
       - name: Exercise scripted host demo and synthetic screenshot
         run: |
           /tmp/thor2-sandbox --help
@@ -56,7 +47,7 @@ jobs:
           assert len(data) == len(header) + 320 * 240 * 3, 'invalid pixel data size'
           print('synthetic 320x240 PPM frame: PASS')
           PY
-      - name: Upload playable Linux host demo and synthetic screenshot
+      - name: Upload Linux host demo and synthetic screenshot
         uses: actions/upload-artifact@v4
         with:
           name: stage62-linux-host-sandbox
@@ -64,4 +55,39 @@ jobs:
             /tmp/thor2-sandbox
             /tmp/thor2-demo.ppm
             /tmp/thor2-demo-status.txt
+          retention-days: 14
+      - name: Build Nintendo Switch NRO in pinned devkitPro container
+        run: |
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
+            --workdir /workspace \
+            devkitpro/devkita64:20260219 \
+            bash -lc '
+              set -euo pipefail
+              test -n "$DEVKITPRO"
+              test -f "$DEVKITPRO/libnx/switch_rules"
+              COMPILER="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+              if [ ! -x "$COMPILER" ]; then
+                echo "Expected compiler not found at: $COMPILER"
+                ls -la "$DEVKITPRO"
+                ls -la "$DEVKITPRO/devkitA64/bin" || true
+                find "$DEVKITPRO" -maxdepth 5 -type f -name "aarch64-none-elf-g++" -print
+                exit 1
+              fi
+              export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
+              command -v aarch64-none-elf-g++
+              command -v make
+              aarch64-none-elf-g++ --version
+              make -f Makefile.switch
+            '
+      - name: Verify NRO artifact and public header
+        run: |
+          test -s thor2-stage63.nro
+          ls -lh thor2-stage63.nro
+          python3 tools/verify_nro_header.py thor2-stage63.nro
+      - name: Upload Nintendo Switch NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage63-switch-nro
+          path: thor2-stage63.nro
           retention-days: 14

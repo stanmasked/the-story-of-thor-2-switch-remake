@@ -102,3 +102,9 @@ stage48_redacted.json
 *private-framebuffer*
 *private-fb-audit*.json
 *private-register-mirror*
+
+# Stage63 devkitPro build outputs; do not commit binaries.
+/build-switch/
+*.elf
+*.map
+*.d
