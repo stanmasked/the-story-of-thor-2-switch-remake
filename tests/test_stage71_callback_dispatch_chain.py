@@ -54,7 +54,7 @@ def callback_dispatch_fixture(callback_id=TARGET_CALLBACK_ID):
     dispatcher = 0x200
     put_pc_literal_load(data, dispatcher, 0, 0x400, CALLBACK_TABLE_BASE)
     put16(data, dispatcher + 2, 0x7FF8)
-    put_pc_literal_load(data, dispatcher + 4, 2, 0x404, 0x06000300)
+    put_pc_literal_load(data, dispatcher + 4, 2, 0x404, 0x06002000)
     put16(data, dispatcher + 6, 0x6343)  # MOV R4,R3
     put_pc_literal_load(data, dispatcher + 8, 1, 0x408, THUNK_TABLE_BASE)
     put16(data, dispatcher + 10, 0x4308)  # SHLL2 R3
