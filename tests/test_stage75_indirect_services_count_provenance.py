@@ -10,6 +10,7 @@ from stage75_indirect_services_count_provenance import (
     LENGTH_SOURCE_GLOBAL,
     SERVICE_SLOT_A,
     SERVICE_SLOT_B,
+    _audit_length_source_writers,
     _count_length_assignments,
     _direct_store_sites,
     _pc_literal_sites,
@@ -119,6 +120,20 @@ class Stage75IndirectServicesTests(unittest.TestCase):
     def test_source_global_writer_signatures_are_found(self):
         data = count_assignment_fixture()
         self.assertEqual(len(_direct_store_sites(data, LENGTH_SOURCE_GLOBAL)), 2)
+
+    def test_r10_writer_requires_zero_seed_and_no_detected_rewrite(self):
+        data = count_assignment_fixture()
+        self.assertEqual(
+            _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL)[
+                "length_source_global_writer_r10_zero_seeded_sites"
+            ],
+            0,
+        )
+        put16(data, 0x80, 0xEA00)  # MOV #0,R10 before the first source-global store
+        result = _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL)
+        self.assertEqual(result["length_source_global_direct_word_writer_signatures"], 2)
+        self.assertEqual(result["length_source_global_writer_r10_zero_seeded_sites"], 1)
+        self.assertFalse(result["length_source_global_writer_values_resolved"])
 
     def test_dma_mode_register_literal_is_not_assumed_from_other_register_bases(self):
         data = slot_fixture()
