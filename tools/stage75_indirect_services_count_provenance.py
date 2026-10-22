@@ -236,7 +236,7 @@ def _service_entry_audit(data: bytes) -> dict:
                 be16(data, pos + 4) == 0x6112 and be16(data, pos + 8) == 0x410B
             )
 
-    direct_tail_jump = False
+    tail_jump_through_pointer = False
     for pos, reg in refs_by_address[SERVICE_ADDRESSES[0]]:
         if reg != 2 or pos + 0x18 + 2 > len(data):
             continue
@@ -248,15 +248,15 @@ def _service_entry_audit(data: bytes) -> dict:
                 for q in range(pos + 0x10, pos + 0x18, 2)
             )
         ):
-            direct_tail_jump = True
+            tail_jump_through_pointer = True
             break
     return {
         "service_entry_literal_reference_sites": len(all_refs),
         "service_entry_nearby_direct_store_sites": len(nearby_store_sites),
         "service_entry_dereference_call_patterns_verified": int(dereference_calls),
-        "service_vector_tail_jump_through_pointer_verified": direct_tail_jump,
+        "service_vector_tail_jump_through_pointer_verified": tail_jump_through_pointer,
         "service_entry_has_tail_jump_and_indirect_call_use": (
-            direct_tail_jump and dereference_calls >= 6
+            tail_jump_through_pointer and dereference_calls >= 6
         ),
         "service_entry_runtime_contents_resolved": False,
         "service_entry_initialization_path_resolved": False,
