@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 63 — added a libnx frontend, controller-to-gameplay mapping, linear RGBA8 framebuffer presenter and a devkitPro Makefile. GitHub Actions now separately host-tests platform adapters and attempts a real cross-compiled Nintendo Switch NRO. The NRO must not be described as built until the Switch CI job passes; hardware/emulator launch is a separate unverified step. The gameplay and graphics remain synthetic placeholders, not restored Saturn assets.**
+**Status: Stage 63 — added a libnx frontend, controller-to-gameplay mapping, linear RGBA8 framebuffer presenter, a host-tested fixed 60-Hz simulation clock and a devkitPro Makefile. GitHub Actions now separately host-tests platform adapters and attempts a real cross-compiled Nintendo Switch NRO. The NRO must not be described as built until the Switch CI job passes; hardware/emulator launch and actual FPS are separate unverified steps. The gameplay and graphics remain synthetic placeholders, not restored Saturn assets.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
@@ -12,7 +12,7 @@ The original Saturn ISO is processed privately and locally. Do not publish game 
 
 With devkitPro/libnx installed, run `make -f Makefile.switch`. This target builds `thor2-stage63.nro` from the original-asset-free gameplay sandbox. GitHub Actions also runs the adapter host tests and a devkitPro cross-build. A successful build proves compilation only; it does not prove execution on Switch hardware or emulator.
 
-Report: `docs/STAGE63_REPORT_RU.md`.
+Report: `docs/STAGE63_REPORT_RU.md`. The platform frontend uses a bounded fixed-step clock (60 ticks/s target, max five catch-up steps per render frame); this does not imply 60 FPS until measured on target.
 
 ## Repeat the metadata-only investigation
 
