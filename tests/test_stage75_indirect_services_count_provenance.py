@@ -157,7 +157,7 @@ class Stage75CountAndServiceTests(unittest.TestCase):
     def test_service_slot_writer_claim_is_limited_to_local_reference_windows(self):
         result = _service_entry_audit(service_fixture())
         self.assertEqual(result["service_entry_nearby_direct_store_sites"], 0)
-        self.assertFalse(result["service_entry_initializer_found"])
+        self.assertFalse(result["service_entry_initialization_path_resolved"])
         self.assertFalse(result["runtime_service_completion_confirmed"])
 
 
