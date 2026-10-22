@@ -85,7 +85,15 @@ jobs:
         run: |
           test -n "$DEVKITPRO"
           test -f "$DEVKITPRO/libnx/switch_rules"
-          test -x "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+          COMPILER="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+          if [ ! -x "$COMPILER" ]; then
+            echo "Expected compiler not found at: $COMPILER"
+            echo "Contents of devkitPro toolchain directories:"
+            ls -la "$DEVKITPRO"
+            ls -la "$DEVKITPRO/devkitA64/bin" || true
+            find "$DEVKITPRO" -maxdepth 5 -type f -name 'aarch64-none-elf-g++' -print
+            exit 1
+          fi
           echo "$DEVKITPRO/devkitA64/bin" >> "$GITHUB_PATH"
           export PATH="$DEVKITPRO/devkitA64/bin:$DEVKITPRO/tools/bin:$PATH"
           command -v aarch64-none-elf-g++
