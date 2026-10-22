@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 49 — privacy-preserving offline SH-2 trace validation added for the original Stage45/46 VDP1 submission path, using exact PC roles and eight longword stores per 32-byte command. Forty new synthetic-only tests cover ordering, registers, VRAM write addresses and optional source word values. A real emulator trace has NOT been captured or authenticated.**
+**Status: Stage 49 — privacy-preserving offline SH-2 trace validation added for the original Stage45/46 VDP1 submission path, using exact PC roles and eight longword stores per 32-byte command. Forty-two new synthetic-only tests cover ordering, registers, VRAM write addresses and optional source word values. A real emulator trace has NOT been captured or authenticated.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
