@@ -30,7 +30,7 @@ Callback читает знаковое 16-битное слово, затем ф
 
 ### 3. Специальный путь связан с обработчиком SCU DMA
 
-Второй внутренний обработчик содержит ссылки на регистровый блок SCU DMA и диспетчеризацию к трём функциям внутри исполняемого файла. В документации Sega Saturn Developer's Manual адресный блок `0x25FE0000–0x25FE0017` соответствует регистрам DMA Level 0; регистр `+0x10` используется для включения/запуска передачи. См. [SCU DMA register details](https://docs.exodusemulator.com/Archives/SSDDV1R1E/a/a04/hon/p040.htm) и [SCU register list](https://www.infochunk.com/saturn/segahtml_en/hard/scu_/hon/p03_01.htm).
+Второй внутренний обработчик содержит ссылки на регистровый блок SCU DMA и диспетчеризацию к трём функциям внутри исполняемого файла. В документации Sega Saturn Developer's Manual адресный блок `0x25FE0000–0x25FE0017` соответствует регистрам DMA Level 0; регистр `+0x10` используется для включения/запуска передачи. См. [SCU DMA register list](https://docs.exodusemulator.com/Archives/SSDDV1R1E/a/a04/hon/p040.htm), [D0EN enable/start bits](https://docs.exodusemulator.com/Archives/SSDDV1R1E/a/a04/hon/p045.htm) и [пример прямого DMA](https://docs.exodusemulator.com/Archives/SSDDV1R1E/a/a04/hon/p021.htm).
 
 Это подтверждает, что специальный путь связан с SCU DMA, но не доказывает, что DMA реально запускается или завершается во время игрового кадра. Следующий этап должен проследить три внутренних обработчика и подтвердить точные записи в регистры, порядок запуска и сигнал завершения.
 
