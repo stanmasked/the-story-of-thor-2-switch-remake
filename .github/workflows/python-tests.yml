@@ -32,3 +32,36 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_framebuffer_test.cpp -o /tmp/thor2-vdp1-host-test
       - name: Run native framebuffer invariants
         run: /tmp/thor2-vdp1-host-test
+
+  native-gameplay-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile original-asset-free C++17 gameplay tests and interactive host demo
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/sandbox_test.cpp -o /tmp/thor2-sandbox-test
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/demo/sandbox_cli.cpp -o /tmp/thor2-sandbox
+      - name: Exercise deterministic gameplay, full synthetic goal and rasterizer
+        run: /tmp/thor2-sandbox-test
+      - name: Exercise scripted host demo and synthetic screenshot
+        run: |
+          /tmp/thor2-sandbox --help
+          /tmp/thor2-sandbox --script='d 20;s 7;e 1' --quiet --ppm=/tmp/thor2-demo.ppm > /tmp/thor2-demo-status.txt
+          grep 'sandbox_state_hash=' /tmp/thor2-demo-status.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          data = Path('/tmp/thor2-demo.ppm').read_bytes()
+          header = b'P6\n320 240\n255\n'
+          assert data.startswith(header), 'invalid PPM screenshot header'
+          assert len(data) == len(header) + 320 * 240 * 3, 'invalid pixel data size'
+          print('synthetic 320x240 PPM frame: PASS')
+          PY
+      - name: Upload playable Linux host demo and synthetic screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage62-linux-host-sandbox
+          path: |
+            /tmp/thor2-sandbox
+            /tmp/thor2-demo.ppm
+            /tmp/thor2-demo-status.txt
+          retention-days: 14
