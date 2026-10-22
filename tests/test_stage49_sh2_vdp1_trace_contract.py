@@ -206,6 +206,14 @@ class Stage49TraceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _validate_event({"role": "wrong", "pc": 1})
 
+    def test_nonstring_role_rejected(self):
+        with self.assertRaises(ValueError):
+            _validate_event({"role": ["store"], "pc": 1, "dest": 2, "value": 3})
+
+    def test_inferred_load_base_not_runtime_verified(self):
+        r = compare_trace(PROGRAM, manifest(), valid_events(), SOURCE)
+        self.assertFalse(r["sh2_load_base_verified_in_live_emulator"])
+
     def test_string_pc_rejected(self):
         with self.assertRaises(ValueError):
             _validate_event({"role": "jsr", "pc": "0x100", "r5": 1})
