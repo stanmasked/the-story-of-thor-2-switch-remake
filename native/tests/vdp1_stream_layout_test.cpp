@@ -83,5 +83,20 @@ int main() {
     assert(begin_transfer_submit(&status, 512u));
     assert(status == 0);
     assert(!begin_transfer_submit(nullptr, 1u));
+
+    // The command upload helper uses full-record count * 32 plus the 2-byte
+    // END word; the command pointer itself reserves four bytes for the marker.
+    std::uint32_t upload_bytes = 0;
+    assert(command_upload_size_bytes(0u, &upload_bytes));
+    assert(upload_bytes == 2u);
+    assert(command_upload_size_bytes(1u, &upload_bytes));
+    assert(upload_bytes == 34u);
+    assert(command_upload_size_bytes(2u, &upload_bytes));
+    assert(upload_bytes == 66u);
+    assert(command_upload_size_bytes(0x7FFFu, &upload_bytes));
+    assert(upload_bytes == 1048546u);
+    assert(!command_upload_size_bytes(0x8000u, &upload_bytes));
+    assert(!command_upload_size_bytes(0xFFFFu, &upload_bytes));
+    assert(!command_upload_size_bytes(1u, nullptr));
     return 0;
 }
