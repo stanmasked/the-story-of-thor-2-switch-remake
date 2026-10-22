@@ -334,13 +334,15 @@ def analyze(image: Path) -> dict:
                 marker_audit["count_assignments_from_source_field_verified"]
             ) else count_audit["command_count_unresolved_register_assignment_sites"],
             "source_count_assignment_cycle_locally_resolved": source_cycle_locally_resolved,
+            "source_field_zero_path_transitive_r10_preservation_proven": False,
+            "source_field_writer_values_fully_resolved": False,
             "steady_state_count_bound_508_proven": (
                 source_cycle_locally_resolved and unclassified == 0
                 and count_audit["command_count_increment_sites_guarded_by_limit"]
                 + count_audit["command_count_increment_sites_after_local_zero_reset"]
                 == count_audit["command_count_increment_sites_recognized"]
             ),
-            "bound_would_hold_if_unclassified_increment_is_unreachable": (
+            "bound_would_hold_if_unclassified_increment_is_unreachable_and_r10_zero_survives_calls": (
                 source_cycle_locally_resolved and unclassified == 1
             ),
             "cold_start_count_bound_proven": False,
