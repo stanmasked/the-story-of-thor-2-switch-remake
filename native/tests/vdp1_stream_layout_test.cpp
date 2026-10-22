@@ -64,5 +64,24 @@ int main() {
     opaque[0] = 0xA5u;
     opaque[31] = 0x5Au;
     assert(opaque.size() == 32u && opaque[0] == 0xA5u && opaque[31] == 0x5Au);
+
+    // Submit gate requires a negative signed status. It clears that status
+    // before checking count, including the zero-count case.
+    std::int8_t status = 1;
+    assert(!begin_transfer_submit(&status, 1u));
+    assert(status == 1);
+    status = 0;
+    assert(!begin_transfer_submit(&status, 1u));
+    assert(status == 0);
+    status = -1;
+    assert(!begin_transfer_submit(&status, 0u));
+    assert(status == 0);
+    status = -1;
+    assert(begin_transfer_submit(&status, 1u));
+    assert(status == 0);
+    status = std::numeric_limits<std::int8_t>::min();
+    assert(begin_transfer_submit(&status, 512u));
+    assert(status == 0);
+    assert(!begin_transfer_submit(nullptr, 1u));
     return 0;
 }
