@@ -80,3 +80,7 @@ stage48_redacted.json
 *private-mednafen-watchlist*.json
 *private-breakpoint*.json
 *private-watchlist*.json
+
+# Stage54: generated local provisional Saturn CUE and emulator/BIOS file evidence.
+*.private-mode1.cue
+*private-launch*.json

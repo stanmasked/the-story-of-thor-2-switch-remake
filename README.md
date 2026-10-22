@@ -2,7 +2,7 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 53 — created an original-ISO-pinned Mednafen Saturn private SH-2 breakpoint and RAM/VDP1 memory-dump plan. It derives twelve PC roles and four global watch addresses solely into a new private 0600 file, printing only aggregate counts. No Saturn emulator was installed and no real gameplay trace, RAM/VRAM capture or Switch NRO has been produced.**
+**Status: Stage 54 — validated original Saturn ISO as 52,224 cooked 2048-byte sectors (region E), added private single-track MODE1/2048 CUE preparation and strict official Mednafen BIOS SHA-256 preflight. The original CD track layout cannot be reconstructed from ISO alone; no BIOS, emulator runtime, RAM capture or Switch NRO is available yet.**
 
 Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
@@ -127,8 +127,10 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 
 - **Stage 53:** generates a private original-specific Mednafen capture plan with 12 SH-2 PC breakpoints, 4 global status/buffer watch addresses, and manual 1-MiB RAM and two 512-KiB VDP1 dump recipes based on official debugger shortcuts; no runtime evidence is claimed. See docs/STAGE53_REPORT_RU.md.
 
-Stages 10–53 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+- **Stage 54:** prepares a provisional adjacent private MODE1/2048 CUE from the pinned original region-E ISO, validates the Mednafen BIOS file hash when available, checks installed emulator binary presence without executing it, and rejects unsafe CUE paths. See docs/STAGE54_REPORT_RU.md.
 
-Reports: Stage 53 (RU), Stage 52 (RU), Stage 51 (RU), Stage 50 (RU), Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Stages 10–54 use synthetic-only GitHub CI; original Saturn material is never uploaded.
+
+Reports: Stage 54 (RU), Stage 53 (RU), Stage 52 (RU), Stage 51 (RU), Stage 50 (RU), Stage 49 (RU), Stage 48 (RU), Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
