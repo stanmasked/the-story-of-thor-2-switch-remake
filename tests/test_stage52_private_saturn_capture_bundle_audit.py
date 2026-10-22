@@ -50,7 +50,7 @@ def fake_session(**overrides):
 
 def case(source=True, verified=True, boot=True, session=None):
     m = manifest()
-    before, after, src = snapshots()
+    before, after, src = snapshots(source=bytes(range(64)))
     events = valid_events()
     return audit_bundle(
         PROGRAM, ram_images(), before, after, m, events,
@@ -79,20 +79,28 @@ class Stage52BundleTests(unittest.TestCase):
     def test_no_boot_metadata_not_complete(self):
         self.assertFalse(case(boot=False)["all_operator_supplied_offline_checks_consistent"])
 
+    def test_trace_source_disagrees_with_vram_capture(self):
+        b, a, src = snapshots()
+        r = audit_bundle(PROGRAM, ram_images(), b, a, manifest(),
+                         valid_events(), src, fake_session(), True, True)
+        self.assertTrue(r["vdp1_command_snapshot_matches_stage48"])
+        self.assertFalse(r["sh2_instruction_events_match_stage49"])
+        self.assertFalse(r["all_operator_supplied_offline_checks_consistent"])
+
     def test_no_source_not_complete(self):
         r = case(source=False)
         self.assertFalse(r["source_command_capture_supplied"])
         self.assertFalse(r["all_operator_supplied_offline_checks_consistent"])
 
     def test_corrupt_ram_prevents_joint_match(self):
-        before, after, src = snapshots()
+        before, after, src = snapshots(source=bytes(range(64)))
         r = audit_bundle(PROGRAM, bytes(0x100000), before, after, manifest(),
                          valid_events(), src, fake_session(), True, True)
         self.assertFalse(r["high_ram_mapping_uniquely_matches_stage50"])
         self.assertFalse(r["all_operator_supplied_offline_checks_consistent"])
 
     def test_corrupt_vram_prevents_joint_match(self):
-        before, after, src = snapshots()
+        before, after, src = snapshots(source=bytes(range(64)))
         wrong = bytearray(after)
         wrong[9000] = 1
         r = audit_bundle(PROGRAM, ram_images(), before, bytes(wrong),
@@ -103,7 +111,7 @@ class Stage52BundleTests(unittest.TestCase):
     def test_bad_instruction_pc_prevents_joint_match(self):
         e = valid_events()
         e[2]["pc"] += 2
-        b, a, src = snapshots()
+        b, a, src = snapshots(source=bytes(range(64)))
         r = audit_bundle(PROGRAM, ram_images(), b, a, manifest(),
                          e, src, fake_session(), True, True)
         self.assertFalse(r["sh2_instruction_events_match_stage49"])
@@ -112,7 +120,7 @@ class Stage52BundleTests(unittest.TestCase):
     def test_wrong_r5_descriptor_count_prevents_joint_match(self):
         m = manifest(pending_count_before=1)
         e = valid_events(m)
-        b, a, src = snapshots()
+        b, a, src = snapshots(source=bytes(range(64)))
         r = audit_bundle(PROGRAM, ram_images(), b, a, m, e, src,
                          fake_session(), True, True)
         self.assertFalse(r["vdp1_command_snapshot_matches_stage48"])
