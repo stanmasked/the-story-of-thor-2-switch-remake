@@ -167,7 +167,7 @@ def audit_bundle(program: bytes, ram: bytes, before: bytes, after: bytes,
         "original_iso_boot_mapping_matches_stage51": bool(boot_metadata_matches),
         "high_ram_mapping_uniquely_matches_stage50": bool(
             ram_result["expected_mapping_uniquely_supported_by_supplied_snapshot"]),
-        "vd p1_command_snapshot_matches_stage48".replace(" ", ""): bool(
+        "vdp1_command_snapshot_matches_stage48": bool(
             vram_result["copy_path_consistent_with_observation"]),
         "sh2_instruction_events_match_stage49": bool(
             trace_result["full_offline_trace_contract_matches"]),
