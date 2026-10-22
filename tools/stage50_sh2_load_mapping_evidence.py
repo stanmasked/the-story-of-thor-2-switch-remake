@@ -75,9 +75,9 @@ def static_preflight(program: bytes) -> dict:
         "static_sh2_role_count": len(anchors),
         "role_signature_width_bytes": ANCHOR_BYTES,
         "unique_static_role_sample_patterns": len(set(code for _, code in anchors)),
-        "matched_original_stage45_and_stage46_roles": True,
-        "emulator_snapshot_provided": False,
-        "runtime_image_mapping_observed": False,
+        "stage45_stage46_code_role_signatures_found": True,
+        "high_work_ram_bytes_supplied": False,
+        "untrusted_ram_mapping_matches_at_expected_base": False,
         "emulator_origin_authenticated": False,
         "actual_sh2_execution_observed": False,
     }
@@ -110,7 +110,7 @@ def summarize(program: bytes, high_work_ram: bytes | None = None) -> dict:
     count = _score(high_work_ram, anchors, expected_image_start)
     full_candidates, seeds = _candidates(high_work_ram, anchors)
     summary.update({
-        "emulator_snapshot_provided": True,  # supplied, NOT authenticated
+        "high_work_ram_bytes_supplied": True,  # supplied, NOT authenticated
         "expected_mapping_role_matches": count,
         "complete_static_image_mapping_candidates": len(full_candidates),
         "complete_alternative_image_mapping_candidates":
@@ -118,7 +118,7 @@ def summarize(program: bytes, high_work_ram: bytes | None = None) -> dict:
         "seed_signature_occurrences": seeds,
         "expected_mapping_uniquely_supported_by_supplied_snapshot":
             count == len(anchors) and full_candidates == [expected_image_start],
-        "runtime_image_mapping_observed": count == len(anchors),
+        "untrusted_ram_mapping_matches_at_expected_base": count == len(anchors),
     })
     return summary
 
