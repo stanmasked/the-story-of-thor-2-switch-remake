@@ -15,8 +15,6 @@ from stage18_writer_guard_flow import be16, iso_file_payload
 from stage35_table_tail_link import branch_destination, movl_literal
 from stage71_callback_dispatch_chain import CODE_LOAD_ADDRESS
 from stage75_indirect_services_count_provenance import (
-    LENGTH_SOURCE_GLOBAL,
-    _direct_store_sites,
     _increments_base_register,
     _may_write_register,
     _resolve_callback,
@@ -272,19 +270,20 @@ def analyze(image: Path) -> dict:
         not any(_may_write_register(_word(data, pos), 10) for pos in graph["nodes"])
         for graph in function_graphs.values()
     )
-    r13_write_free = bool(function_graphs) and all(
-        not any(
+    r13_preserved_by_graph = {}
+    r13_saver_verified = False
+    for entry, graph in function_graphs.items():
+        writes_r13 = any(
             _may_write_register(_word(data, pos), 13)
             or _increments_base_register(_word(data, pos), 13)
             for pos in graph["nodes"]
         )
-        for entry, graph in function_graphs.items()
-        if entry not in main_direct_targets or not _r13_preserved_by_saver(data, entry, graph)
-    )
-    r13_saver_verified = any(
-        _r13_preserved_by_saver(data, entry, graph)
-        for entry, graph in function_graphs.items()
-    )
+        preserved = not writes_r13
+        if writes_r13:
+            preserved = _r13_preserved_by_saver(data, entry, graph)
+            r13_saver_verified |= preserved
+        r13_preserved_by_graph[entry] = preserved
+    r13_preserved = bool(function_graphs) and all(r13_preserved_by_graph.values())
     unresolved_indirect_call_sites = sum(
         1 for graph in function_graphs.values()
         for target in graph["indirect_targets"].values() if target is None
@@ -293,6 +292,7 @@ def analyze(image: Path) -> dict:
         bool(main_direct_targets)
         and not unresolved_indirect_call_sites
         and not any(graph["node_limit_reached"] for graph in function_graphs.values())
+        and all(graph["returns"] for graph in function_graphs.values())
     )
     return {
         "schema_version": 1,
@@ -309,9 +309,9 @@ def analyze(image: Path) -> dict:
             "all_reachable_callee_targets_closed": all_targets_closed,
             "r10_preserved_by_analyzed_callee_graph": r10_write_free,
             "r13_preservation_wrapper_found": r13_saver_verified,
-            "r13_preserved_by_analyzed_callee_graph": r13_write_free or r13_saver_verified,
+            "r13_preserved_by_analyzed_callee_graph": r13_preserved,
             "indirect_callee_r10_r13_effects_fully_proven": (
-                all_targets_closed and r10_write_free and (r13_write_free or r13_saver_verified)
+                all_targets_closed and r10_write_free and r13_preserved
             ),
             "source_global_initialization_order_proven": False,
             "global_length_count_upper_bound_proven": False,
