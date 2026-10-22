@@ -17,6 +17,7 @@ from stage18_writer_guard_flow import be16, iso_file_payload
 from stage35_table_tail_link import movl_literal
 from stage46_vdp1_submit_gate import find_submit_gates
 
+CODE_LOAD_ADDRESS = 0x06004000
 VDP1_REGISTER_BASE = 0x25D00000
 VDP1_REGISTER_OFFSETS = {
     0x00: "TVMR",
@@ -145,6 +146,7 @@ def scan_status_writes(
                 )
                 events_by_store[position] = {
                     "store_position": position,
+                    "pointer_load_position": load_position,
                     "source_register": source_register,
                     "constant_value": value,
                     "constant_class": kind,
@@ -171,6 +173,7 @@ def scan_status_writes(
                         )
                         events_by_store[delay_position] = {
                             "store_position": delay_position,
+                            "pointer_load_position": load_position,
                             "source_register": delay_source,
                             "constant_value": value,
                             "constant_class": kind,
@@ -182,6 +185,86 @@ def scan_status_writes(
     return pointer_loads, [
         events_by_store[position] for position in sorted(events_by_store)
     ]
+
+
+def _matches_callback_table_dispatcher(data: bytes, entry: int) -> bool:
+    """Match the narrow dispatcher pattern that stores R5 at table_base + id*4."""
+    if entry < 0 or entry + 18 > len(data):
+        return False
+    first = be16(data, entry)
+    second = be16(data, entry + 2)
+    fourth = be16(data, entry + 4)
+    sixth = be16(data, entry + 6)
+    eighth = be16(data, entry + 8)
+    tenth = be16(data, entry + 10)
+    return (
+        first & 0xF000 == 0xD000
+        and (first >> 8) & 0xF == 0
+        and second == 0x7FF8
+        and fourth & 0xF000 == 0xD000
+        and (fourth >> 8) & 0xF == 2
+        and sixth == 0x6343
+        and eighth & 0xF000 == 0xD000
+        and (eighth >> 8) & 0xF == 1
+        and tenth == 0x4308
+        and be16(data, entry + 12) == 0x2F42
+        and be16(data, entry + 14) == 0x1F31
+        and be16(data, entry + 16) == 0x0356
+    )
+
+
+def find_negative_writer_callback_ids(
+    data: bytes, status_address: int | None
+) -> list[int]:
+    """Find registration-like calls for functions with a nearby explicit -1 store.
+
+    The recognized dispatcher writes its R5 callback argument into a table slot
+    indexed by R4*4. A match establishes static registration, not callback
+    invocation or a runtime causal link to the submit gate.
+    """
+    if status_address is None:
+        return []
+    _, status_writes = scan_status_writes(data, status_address)
+    negative_writes = [
+        event for event in status_writes
+        if event["constant_class"] == "negative"
+    ]
+    registrations = []
+    for position in range(0, len(data) - 8, 2):
+        callback_literal = movl_literal(data, position)
+        if callback_literal is None or callback_literal[2] != 5:
+            continue
+        callback_address = callback_literal[1]
+        if not (
+            CODE_LOAD_ADDRESS <= callback_address < CODE_LOAD_ADDRESS + len(data)
+        ):
+            continue
+        callback_entry = callback_address - CODE_LOAD_ADDRESS
+        if not any(
+            callback_entry <= event["pointer_load_position"] < callback_entry + 0x100
+            and callback_entry <= event["store_position"] < callback_entry + 0x100
+            for event in negative_writes
+        ):
+            continue
+
+        dispatcher_literal = movl_literal(data, position + 2)
+        if dispatcher_literal is None or dispatcher_literal[2] != 2:
+            continue
+        if be16(data, position + 4) != 0x420B:
+            continue
+        delay_slot = be16(data, position + 6)
+        if delay_slot & 0xFF00 != 0xE400:
+            continue
+        dispatcher_address = dispatcher_literal[1]
+        if not (
+            CODE_LOAD_ADDRESS <= dispatcher_address < CODE_LOAD_ADDRESS + len(data)
+        ):
+            continue
+        dispatcher_entry = dispatcher_address - CODE_LOAD_ADDRESS
+        if not _matches_callback_table_dispatcher(data, dispatcher_entry):
+            continue
+        registrations.append(_signed8(delay_slot & 0xFF))
+    return sorted(set(registrations))
 
 
 def _word_store(opcode: int, registers: dict[int, int | None]):
@@ -380,6 +463,7 @@ def summarize(
     else:
         status_loads, status_writes = scan_status_writes(data, status_address)
     write_classes = Counter(event["constant_class"] for event in status_writes)
+    callback_ids = find_negative_writer_callback_ids(data, status_address)
     hardware_writes = scan_vdp1_register_writes(data)
     register_counts = Counter(
         VDP1_REGISTER_OFFSETS[event["register_offset"]]
@@ -397,7 +481,10 @@ def summarize(
         "status_constant_zero_store_candidates": write_classes["zero"],
         "status_constant_one_store_candidates": write_classes["one"],
         "status_dynamic_or_unresolved_store_candidates": write_classes["other"],
-        "negative_status_writer_causally_linked_to_submit_gate": False,
+        "negative_status_writer_callback_registration_candidates": len(callback_ids),
+        "negative_status_writer_callback_registration_ids": callback_ids,
+        "negative_status_writer_runtime_invocation_confirmed": False,
+        "negative_status_writer_wakes_submit_gate_proven": False,
         "recognized_vdp1_register_store_candidates": len(hardware_writes),
         "recognized_vdp1_register_store_candidates_by_name": dict(sorted(register_counts.items())),
         "recognized_ptmr_store_candidates": len(ptmr_writes),
@@ -413,10 +500,11 @@ def summarize(
         "interpretation": (
             "One bounded PC-literal pointer path writes value 2 to PTMR, which "
             "selects automatic drawing at frame start. The scan finds a direct "
-            "constant -1 store to the same status byte used by the submit gate, "
-            "but does not prove that this store is the runtime producer that "
-            "wakes that gate. Other status writes and framebuffer-control paths "
-            "remain only statically correlated."
+            "constant -1 store to the shared status byte and a registration-like "
+            "call passing that writer to a dispatcher under callback ID 64. "
+            "Static registration does not prove runtime invocation or prove that "
+            "the callback wakes the submit gate. Other status writes and "
+            "framebuffer-control paths remain only statically correlated."
         ),
     }
 
