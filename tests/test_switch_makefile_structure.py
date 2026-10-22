@@ -36,7 +36,7 @@ class SwitchMakefileStructureTests(unittest.TestCase):
             MAKEFILE.index("export LIBPATHS"),
             MAKEFILE.index("export NROFLAGS += --nacp="),
         )
-        outer_else = MAKEFILE.index("\\nelse\\n\\n.PHONY: all")
+        outer_else = MAKEFILE.index("\nelse\n\n.PHONY: all")
         self.assertLess(MAKEFILE.index("export NROFLAGS += --nacp="), outer_else)
         self.assertIn("APP_TITLE    := Thor2 Native Sandbox", MAKEFILE)
         self.assertIn("APP_AUTHOR   := RIKITU LAB", MAKEFILE)
