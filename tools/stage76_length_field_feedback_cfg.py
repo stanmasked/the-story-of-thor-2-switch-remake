@@ -96,6 +96,7 @@ def _direct_cfg_states_at_targets(
     visited = set()
     target_states: dict[int, set[tuple[bool, bool, bool, bool]]] = defaultdict(set)
     indirect_calls = set()
+    direct_calls = set()
 
     def add_target_state(pos: int, state: tuple[bool, bool, bool, bool]) -> None:
         if pos in targets:
@@ -124,6 +125,7 @@ def _direct_cfg_states_at_targets(
                     data, delay_pos, state, length_address
                 )
                 if kind == "BSR":
+                    direct_calls.add(pos)
                     next_pos = pos + 4
                     if next_pos <= end_bound:
                         queue.append((next_pos, delay_state))
@@ -166,7 +168,7 @@ def _direct_cfg_states_at_targets(
         if pos + 2 <= end_bound:
             queue.append((pos + 2, next_state))
 
-    return dict(target_states), len(visited), len(indirect_calls)
+    return dict(target_states), len(visited), len(indirect_calls), len(direct_calls)
 
 
 def _find_source_writer_sites(data: bytes) -> tuple[list[int], list[int]]:
@@ -205,9 +207,9 @@ def analyze(image: Path) -> dict:
         if candidates:
             entry = max(candidates)
 
-    states, visited_states, indirect_calls = ({}, 0, 0)
+    states, visited_states, indirect_calls, direct_calls = ({}, 0, 0, 0)
     if entry is not None and length_address is not None and targets:
-        states, visited_states, indirect_calls = _direct_cfg_states_at_targets(
+        states, visited_states, indirect_calls, direct_calls = _direct_cfg_states_at_targets(
             data, entry, max(targets), targets, length_address
         )
 
@@ -237,6 +239,7 @@ def analyze(image: Path) -> dict:
             "r10_writer_reachable_direct_cfg_state_count": len(set(r10_states)),
             "r13_feedback_read_reachable_direct_cfg_state_count": len(set(r13_states)),
             "reachable_direct_cfg_instruction_states": visited_states,
+            "direct_call_sites_on_direct_cfg_paths": direct_calls,
             "indirect_call_sites_on_direct_cfg_paths": indirect_calls,
             "indirect_callee_preservation_of_r10_r13_proven": False,
             "alternate_indirect_entry_paths_excluded": False,
