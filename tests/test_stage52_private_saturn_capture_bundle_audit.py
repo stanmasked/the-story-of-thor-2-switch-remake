@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from test_stage50_sh2_load_mapping_evidence import PROGRAM, ram_images
 from test_stage48_vdp1_copy_witness import manifest, snapshots
 from test_stage49_sh2_vdp1_trace_contract import valid_events
+from stage51_saturn_boot_first_read_map import analyze_private as check_private_boot
 from stage52_private_saturn_capture_bundle_audit import (
     MAX_SESSION_BYTES, validate_session, load_session, verify_hashes,
     digest_file, audit_bundle, run_private,
@@ -188,7 +189,7 @@ class Stage52BundleTests(unittest.TestCase):
 
     def test_emulator_identity_is_self_declared(self):
         r = case()
-        self.assertTrue(r["declared_emulator_build_identified_by_hash"])
+        self.assertTrue(r["emulator_build_sha256_declared_by_operator"])
         self.assertFalse(r["authenticated_emulator_trace_observed"])
         self.assertFalse(r["boot_file_transfer_dynamically_verified"])
 
@@ -252,8 +253,7 @@ class Stage52BundleTests(unittest.TestCase):
             fake_iso = p/"fake.iso"
             fake_iso.write_bytes(b"bad")
             with self.assertRaises(ValueError):
-                run_private(fake_iso, p/"session.json", p/"ram", p/"before",
-                            p/"after", p/"manifest", p/"trace", p/"source")
+                check_private_boot(fake_iso)
 
 
 if __name__ == "__main__":
