@@ -311,9 +311,10 @@ def analyze(image: Path) -> dict:
             "r10_preserved_by_analyzed_callee_graph": r10_write_free,
             "r13_preservation_wrapper_found": r13_saver_verified,
             "r13_preserved_by_analyzed_callee_graph": r13_preserved,
-            "indirect_callee_r10_r13_effects_fully_proven": (
+            "discovered_callee_graph_preserves_r10_r13": (
                 all_targets_closed and r10_write_free and r13_preserved
             ),
+            "alternate_runtime_indirect_entries_excluded": False,
             "source_global_initialization_order_proven": False,
             "global_length_count_upper_bound_proven": False,
             "runtime_callback_invocation_confirmed": False,
