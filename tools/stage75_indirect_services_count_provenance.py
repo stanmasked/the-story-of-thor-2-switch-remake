@@ -50,8 +50,8 @@ def _may_write_register(opcode: int, register: int) -> bool:
 
 def _is_indirect_call(opcode: int, register: int) -> bool:
     return (
-        opcode & 0xF0FF == (0x400B | (register << 8))
-        or opcode & 0xF0FF == (0x402B | (register << 8))
+        ((opcode & 0xF0FF) in (0x400B, 0x402B))
+        and ((opcode >> 8) & 0xF) == register
     )
 
 
