@@ -130,7 +130,7 @@ class Stage51BootTests(unittest.TestCase):
 
     def test_transfer_over_system_reserved_tail_rejected(self):
         with self.assertRaises(ValueError):
-            verify_boot_layout(image(first_addr=RAM_BASE+0xFE000))
+            verify_boot_layout(image(first_addr=RAM_BASE+0xFEE00))
 
     def test_first_program_not_sh2_static_pair_rejected(self):
         with self.assertRaises(ValueError):
