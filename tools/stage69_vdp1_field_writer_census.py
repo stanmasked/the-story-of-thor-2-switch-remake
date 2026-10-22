@@ -179,6 +179,52 @@ def _is_zero_count_test(opcode: int) -> bool:
     return False
 
 
+def metadata_pointer_sentinel_guard_candidates(data: bytes) -> int:
+    """Match a bounded 0xFFFF table-sentinel check leading to the +0xAC store.
+
+    This is a syntactic candidate, not proof of a reachable runtime guard.
+    """
+    matches = 0
+    for pos in range(0, len(data) - 18, 2):
+        first = be16(data, pos)
+        if first & 0xF000 != 0xD000 or ((first >> 8) & 0x0F) != 0:
+            continue
+        first_literal = movl_target(pos, first, len(data))
+        if first_literal is None or int.from_bytes(
+            data[first_literal:first_literal + 4], "big"
+        ) != 0x20000002:
+            continue
+        if be16(data, pos + 2) != 0x4600:  # SHLL R6
+            continue
+        second = be16(data, pos + 4)
+        if second & 0xF000 != 0xD000 or ((second >> 8) & 0x0F) != 2:
+            continue
+        second_literal = movl_target(pos + 4, second, len(data))
+        if second_literal is None or int.from_bytes(
+            data[second_literal:second_literal + 4], "big"
+        ) != 0x0000FFFF:
+            continue
+        if [be16(data, pos + delta) for delta in (6, 8, 10, 12, 14)] != [
+            0x6563, 0x354C, 0x055D, 0x635D, 0x3320
+        ]:
+            continue
+        branch_pos = pos + 16
+        branch = be16(data, branch_pos)
+        if branch & 0xFF00 != 0x8B00:  # BF: non-sentinel path
+            continue
+        target = branch_pos + 4 + (branch & 0xFF if branch & 0x80 == 0
+                                   else (branch & 0xFF) - 0x100) * 2
+        if target < 0 or target + 2 > len(data):
+            continue
+        field_load = be16(data, target)
+        if field_load & 0xF000 != 0x9000 or ((field_load >> 8) & 0x0F) != 0:
+            continue
+        field_literal = movw_target(target, field_load, len(data))
+        if field_literal is not None and be16(data, field_literal) == 0x00AC:
+            matches += 1
+    return matches
+
+
 def count_derivation_window(data: bytes, start: int,
                             lookahead_bytes: int = 96) -> dict | None:
     """Recognize MOV R4,R2 -> three SHAR R2 -> MOV.W R2,@R3.
@@ -243,6 +289,8 @@ def summarize(data: bytes) -> dict:
         "candidate_offset_definition_kinds": {
             name: dict(sorted(offset_counts[name].items())) for name in FIELD_NAMES
         },
+        "metadata_pointer_ffff_sentinel_guard_candidates":
+            metadata_pointer_sentinel_guard_candidates(data),
         "recognized_producer_count_windows": len(count_windows),
         "recognized_count_windows_with_zero_test_candidate": sum(
             item["explicit_zero_test_candidate"] for item in count_windows
@@ -261,6 +309,7 @@ def summarize(data: bytes) -> dict:
             "Base-register identity across calls and aliases is not proven.",
             "Code/data ambiguity can create false-positive syntactic candidates.",
             "Candidate writes do not prove object construction or runtime reachability.",
+            "The 0xFFFF table-sentinel signature does not prove a nonzero metadata block count.",
             "Absence of a zero-test in the recognized window does not prove all callers lack a guard.",
             "No original code offsets, raw machine bytes, RAM captures, or game assets are emitted.",
         ],
