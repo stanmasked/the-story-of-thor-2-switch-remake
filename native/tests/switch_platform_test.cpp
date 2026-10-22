@@ -85,6 +85,7 @@ int main() {
         assert(!present_rgba8(src,dst.data(),100,1280,720,1280));
         assert(!present_rgba8(src,dst.data(),dst.size(),3,720,1280));
         assert(!present_rgba8(src,dst.data(),dst.size(),1280,2,1280));
+        assert(!present_rgba8(src,dst.data(),dst.size(),9000,720,9000));
     }
     {
         // The actual framebuffer output must use the packed libnx byte order,
