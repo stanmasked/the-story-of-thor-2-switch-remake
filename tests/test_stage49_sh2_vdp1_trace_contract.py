@@ -166,15 +166,23 @@ class Stage49TraceTests(unittest.TestCase):
 
     def test_multicopy_single_descriptor(self):
         records = [{"destination_index": 12, "copy_count": 2}]
-        m = manifest(records, pending_count_before=2)
+        m = manifest(records, pending_count_before=1)
         r = compare_trace(PROGRAM, m, valid_events(m), SOURCE)
         self.assertTrue(r["full_offline_trace_contract_matches"])
-        self.assertFalse(r["pending_budget_equals_command_count"] is False)
+        self.assertTrue(r["pending_budget_equals_descriptor_count"])
+        self.assertEqual(r["total_inner_loop_commands"], 2)
+
+    def test_one_descriptor_two_commands_r5_two_rejected(self):
+        records = [{"destination_index": 12, "copy_count": 2}]
+        m = manifest(records, pending_count_before=2)
+        result = compare_trace(PROGRAM, m, valid_events(m), SOURCE)
+        self.assertFalse(result["pending_budget_equals_descriptor_count"])
+        self.assertFalse(result["full_offline_trace_contract_matches"])
 
     def test_count_mismatch_not_accepted(self):
         m = manifest(pending_count_before=1)
         r = compare_trace(PROGRAM, m, valid_events(m), SOURCE)
-        self.assertFalse(r["pending_budget_equals_command_count"])
+        self.assertFalse(r["pending_budget_equals_descriptor_count"])
         self.assertFalse(r["full_offline_trace_contract_matches"])
 
     def test_nonnegative_gate_flag_not_accepted(self):
