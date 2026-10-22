@@ -64,10 +64,29 @@ int main() {
     assert(!decode_transfer_descriptor(nullptr, bytes.size(), &descriptor));
     assert(!decode_transfer_descriptor(bytes.data(), 7, &descriptor));
     assert(!decode_transfer_descriptor(bytes.data(), bytes.size(), nullptr));
+
+    // Both helpers are fail-closed: failed calls must not partially overwrite
+    // an existing caller-owned output structure.
+    TransferDescriptor descriptor_sentinel{0xDEADBEEFu, 0xBEEFu, 123};
+    assert(!decode_transfer_descriptor(bytes.data(), 7, &descriptor_sentinel));
+    assert(descriptor_sentinel.source_address == 0xDEADBEEFu);
+    assert(descriptor_sentinel.destination_slot == 0xBEEFu);
+    assert(descriptor_sentinel.block_count == 123);
+
+    TransferCopyPlan plan_sentinel{0xDEADBEEFu, 0xCAFEBABEu, 777, 9};
     descriptor = TransferDescriptor{0x06091235u, 0, 1};
-    assert(!make_transfer_copy_plan(descriptor, &plan));
+    assert(!make_transfer_copy_plan(descriptor, &plan_sentinel));
+    assert(plan_sentinel.source_address == 0xDEADBEEFu);
+    assert(plan_sentinel.destination_address == 0xCAFEBABEu);
+    assert(plan_sentinel.payload_bytes == 777);
+    assert(plan_sentinel.block_count == 9);
+
     descriptor = TransferDescriptor{0xFFFFFFF0u, 0, 1};
-    assert(!make_transfer_copy_plan(descriptor, &plan));
+    assert(!make_transfer_copy_plan(descriptor, &plan_sentinel));
+    assert(plan_sentinel.source_address == 0xDEADBEEFu);
+    assert(plan_sentinel.destination_address == 0xCAFEBABEu);
+    assert(plan_sentinel.payload_bytes == 777);
+    assert(plan_sentinel.block_count == 9);
 
     // A multi-block payload must fit in VRAM; count stays signed-positive.
     descriptor = TransferDescriptor{0x06091234u, 0, 2};
