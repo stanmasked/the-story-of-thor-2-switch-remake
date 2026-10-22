@@ -49,3 +49,11 @@ stage09.json
 *.vrmdump
 *private-vdp1-*.dat
 *private-vram*.json
+
+# Stage48: never publish operator-supplied VDP1 witness metadata.
+*private-copy-witness*.json
+*private-capture*.json
+stage47.json
+stage48.json
+stage47_redacted.json
+stage48_redacted.json
