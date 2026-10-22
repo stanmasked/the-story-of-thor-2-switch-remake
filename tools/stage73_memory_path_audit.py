@@ -162,7 +162,7 @@ def audit_helper_transfer(
     if callback_entry < 0 or callback_entry + 0x2E > len(data):
         return result
 
-    count_pointer = movl_literal(data, callback_entry + 0x1A)
+    count_pointer = movl_literal(data, callback_entry + 0x18)
     source_literal = movl_literal(data, callback_entry + 0x20)
     destination_literal = movl_literal(data, callback_entry + 0x24)
     helper_literal = movl_literal(data, callback_entry + 0x28)
