@@ -57,3 +57,8 @@ stage47.json
 stage48.json
 stage47_redacted.json
 stage48_redacted.json
+
+# Stage49: raw debugger events contain private SH-2 PCs and VDP1 data.
+*private-sh2*.jsonl
+*private-trace*.jsonl
+*private-trace-contract*.json
