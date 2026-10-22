@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 
 from stage14_vdp1_record_copy_probe import be16, be32, mov_l_pc_target
-from stage15_vdp1_callsite_probe import writes_register
 from stage17_writer_callsite_audit import writer_guard_positions
 from stage18_writer_guard_flow import iso_file_payload
 
@@ -167,7 +166,7 @@ def find_global_field98_guards(data: bytes, producer_entry: int) -> list[dict]:
                 if field_literal is None or be16(data, field_literal) != GLOBAL_STATE_FIELD_OFFSET:
                     continue
                 if (
-                    field_load + 8 > len(data)
+                    field_load + 10 > len(data)
                     or be16(data, field_load + 2) != 0x024E  # MOV.L @(R0,R4),R2
                     or be16(data, field_load + 4) != 0x3230  # CMP/EQ R3,R2
                 ):
@@ -270,7 +269,6 @@ def analyze(image: Path) -> dict:
         "schema_version": 1,
         "stage": "stage67_vdp1_producer_callers",
         "target_file": "0TH2.BIN",
-        "disc_sha256": None,
         "analysis": summarize(iso_file_payload(image)),
     }
 
