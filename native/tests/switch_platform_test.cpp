@@ -3,6 +3,7 @@
 #include "platform/input_mapping.hpp"
 #include "platform/framebuffer_presenter.hpp"
 #include "platform/fixed_step_clock.hpp"
+#include "platform/input_accumulator.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -15,6 +16,7 @@ using thor2::platform::ButtonMasks;
 using thor2::platform::map_buttons;
 using thor2::platform::pack_rgba8_for_libnx;
 using thor2::platform::present_rgba8;
+using thor2::platform::InputAccumulator;
 
 int main() {
     constexpr std::uint64_t LEFT = 1ull << 0;
@@ -71,6 +73,38 @@ int main() {
         assert(!invalid_rate.valid());
         assert(!invalid_catchup.valid());
         assert(invalid_zero_frequency.advance(100) == 0);
+    }
+    {
+        // A brief interaction sampled between fixed ticks must survive until
+        // one simulation tick, even if the button is released before consume.
+        InputAccumulator input;
+        thor2::sandbox::Input pressed{};
+        pressed.left = true;
+        pressed.interact = true;
+        pressed.restart = true;
+        input.sample(pressed);
+        thor2::sandbox::Input released{};
+        input.sample(released);
+        assert(input.has_pending_edge());
+        const auto tick = input.consume_tick();
+        assert(!tick.left && tick.interact && tick.restart);
+        assert(!input.has_pending_edge());
+        const auto next = input.consume_tick();
+        assert(!next.interact && !next.restart);
+    }
+    {
+        // Latest held directions are used, while a restart edge waits for a
+        // tick if the render loop advanced before the fixed-step deadline.
+        InputAccumulator input;
+        thor2::sandbox::Input direction{};
+        direction.right = true;
+        input.sample(direction);
+        thor2::sandbox::Input restart{};
+        restart.restart = true;
+        input.sample(restart);
+        const auto tick = input.consume_tick();
+        assert(!tick.right && tick.restart);
+        assert(!input.has_pending_edge());
     }
     {
         assert(pack_rgba8_for_libnx(rgba(0x12,0x34,0x56,0x78)) == 0x78563412u);
