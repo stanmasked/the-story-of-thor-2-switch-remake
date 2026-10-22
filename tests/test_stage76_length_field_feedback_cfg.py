@@ -81,7 +81,7 @@ class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
         put_pc_literal_load(data, 0x22, 13, 0x80, LENGTH_ADDRESS)
         put16(data, 0x26, 0xED01)  # MOV #1,R13
         put16(data, 0x28, 0x22A1)
-        states, _, _ = _direct_cfg_states_at_targets(
+        states, _, _, _ = _direct_cfg_states_at_targets(
             data, entry, 0x28, {0x28}, LENGTH_ADDRESS
         )
         self.assertEqual(states[0x28], {(True, False, True, True)})
