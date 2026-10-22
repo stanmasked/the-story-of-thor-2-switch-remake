@@ -89,17 +89,19 @@ int main() {
     {
         // Constant gameplay input must produce the same state at 30, 60 and
         // 120 Hz render-loop cadences when all runs cover the same elapsed time.
-        const auto run_for_one_second = [](std::uint64_t render_interval) {
+        const auto run_for_one_second = [](std::uint64_t render_hz) {
             Game game;
-            thor2::platform::FixedStepClock clock(6000, 60, 5);
+            // 1000 Hz is deliberately not divisible by the target 60 Hz.
+            thor2::platform::FixedStepClock clock(1000, 60, 5);
             InputAccumulator input;
             assert(clock.valid());
             clock.reset(0);
             thor2::sandbox::Input held{};
             held.right = true;
-            for (std::uint64_t now = render_interval; now <= 6000;
-                 now += render_interval) {
+            for (std::uint64_t frame = 1; frame <= render_hz; ++frame) {
                 input.sample(held);
+                // Integer frame timestamps alternate adjacent tick lengths.
+                const std::uint64_t now = frame * 1000 / render_hz;
                 const auto steps = clock.advance(now);
                 for (std::uint32_t i = 0; i < steps; ++i)
                     game.tick(input.consume_tick());
@@ -107,9 +109,9 @@ int main() {
             assert(game.state().ticks == 60);
             return game.state_hash();
         };
-        const auto hash_30hz = run_for_one_second(200);
-        const auto hash_60hz = run_for_one_second(100);
-        const auto hash_120hz = run_for_one_second(50);
+        const auto hash_30hz = run_for_one_second(30);
+        const auto hash_60hz = run_for_one_second(60);
+        const auto hash_120hz = run_for_one_second(120);
         assert(hash_30hz == hash_60hz);
         assert(hash_60hz == hash_120hz);
     }
