@@ -57,7 +57,7 @@ def _overlaps_source_field(address: int, width: int) -> bool:
 def _store_effect(
     data: bytes, pos: int, registers: tuple[int | None, ...],
     initial_pointer_value: int,
-) -> tuple[tuple[int, int, str] | None, tuple[int, int, str] | None]:
+) -> tuple[tuple[int, int, str, int, int] | None, tuple[int, int, str] | None]:
     opcode = _word(data, pos)
     group = opcode >> 12
     base_register = (opcode >> 8) & 0xF
