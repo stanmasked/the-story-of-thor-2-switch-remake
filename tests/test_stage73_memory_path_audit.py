@@ -49,7 +49,8 @@ def fixture(source=SOURCE_BUFFER, destination=VDP1_VRAM_BASE):
 
     # Callback's signed word is loaded from the field immediately before the
     # submit gate's separate pending-record count. Length is count*32 + 2.
-    put_pc_literal_load(data, CALLBACK_ENTRY + 0x1A, 2, CALLBACK_ENTRY + 0x240, COUNT_FIELD)
+    put_pc_literal_load(data, CALLBACK_ENTRY + 0x18, 2, CALLBACK_ENTRY + 0x240, COUNT_FIELD)
+    put16(data, CALLBACK_ENTRY + 0x1A, 0x21E0)
     put16(data, CALLBACK_ENTRY + 0x1C, 0x6621)
     put16(data, CALLBACK_ENTRY + 0x1E, 0x4608)
     put_pc_literal_load(data, CALLBACK_ENTRY + 0x20, 5, CALLBACK_ENTRY + 0x244, source)
