@@ -45,7 +45,19 @@ def _may_write_register(opcode: int, register: int) -> bool:
     group = opcode >> 12
     destination = (opcode >> 8) & 0xF
     # Deliberately conservative: false positives suppress a provenance claim.
-    return group in (0x3, 0x4, 0x5, 0x6, 0x7, 0x9, 0xD, 0xE) and destination == register
+    if group in (0x3, 0x4, 0x5, 0x6, 0x7, 0x9, 0xD, 0xE):
+        return destination == register
+    if group == 0x0:
+        return (
+            (opcode & 0xF00F in (0x000C, 0x000D, 0x000E) and destination == register)
+            or (destination == register and (opcode & 0x00FF) in (
+                0x0002, 0x0012, 0x0022, 0x0032, 0x0042,
+                0x000A, 0x001A, 0x002A, 0x0029,
+            ))
+        )
+    if group == 0x2:
+        return destination == register and (opcode & 0xF) in (0x9, 0xA, 0xB, 0xD)
+    return False
 
 
 def _is_indirect_call(opcode: int, register: int) -> bool:
@@ -150,8 +162,39 @@ def _count_length_assignments(
 
 def _audit_length_source_writers(data: bytes, source_address: int) -> dict:
     stores = _direct_store_sites(data, source_address)
+    r10_zero_seeded = 0
+    for store_pos in stores:
+        store = _word(data, store_pos)
+        if store & 0xF00F != 0x2001:
+            continue
+        source_reg = (store >> 4) & 0xF
+        if source_reg != 10:
+            continue
+        base_reg = (store >> 8) & 0xF
+        matching_loads = [
+            item for item in _pc_literal_sites(data, source_address)
+            if item[2] == base_reg and store_pos - 0x22 <= item[0] < store_pos
+        ]
+        if not matching_loads:
+            continue
+        seed_candidates = [
+            pos for pos in range(max(0, store_pos - 0x1000), store_pos, 2)
+            if _word(data, pos) == 0xEA00
+        ]
+        if not seed_candidates:
+            continue
+        seed_pos = max(seed_candidates)
+        if any(
+            _may_write_register(_word(data, pos), 10)
+            for pos in range(seed_pos + 2, store_pos, 2)
+        ):
+            continue
+        # This is a local linear data-flow result only; indirect callee effects
+        # and alternate entry paths are not treated as resolved.
+        r10_zero_seeded += 1
     return {
         "length_source_global_direct_word_writer_signatures": len(stores),
+        "length_source_global_writer_r10_zero_seeded_sites": r10_zero_seeded,
         "length_source_global_writer_values_resolved": False,
     }
 
@@ -220,6 +263,9 @@ def analyze(image: Path) -> dict:
             "length_count_assignment_source_reads_verified": source_read_sites,
             "length_source_global_direct_word_writer_signatures": source_writers[
                 "length_source_global_direct_word_writer_signatures"
+            ],
+            "length_source_global_writer_r10_zero_seeded_sites": source_writers[
+                "length_source_global_writer_r10_zero_seeded_sites"
             ],
             "length_source_global_writer_values_resolved": source_writers[
                 "length_source_global_writer_values_resolved"
