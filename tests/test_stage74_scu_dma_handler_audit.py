@@ -47,6 +47,7 @@ def put_pc_literal_load(data, position, register, literal_position, value):
 def dma_fixture():
     data = bytearray(0x1000)
     put16(data, HELPER_ENTRY + 0x08, 0xED01)
+    put16(data, HELPER_ENTRY + 0x0A, 0xEE00)
     put_pc_literal_load(
         data, HELPER_ENTRY + 0xD8, 3, HELPER_ENTRY + 0x100,
         CODE_LOAD_ADDRESS + FIRST_ENTRY,
@@ -155,9 +156,9 @@ class Stage74SCUDMAAuditTests(unittest.TestCase):
         self.assertTrue(result["three_handler_parameter_globals_verified"])
         self.assertTrue(result["three_handler_state_byte_clear_pattern_verified"])
         self.assertFalse(result["handlers_write_scu_registers_directly"])
-        self.assertTrue(result["dispatcher_d1en_start_write_verified"])
-        self.assertTrue(result["dispatcher_r13_offset_dataflow_verified"])
-        self.assertTrue(result["dma_level1_enable_start_value_verified"])
+        self.assertTrue(result["dispatcher_d0en_start_write_verified"])
+        self.assertTrue(result["dispatcher_dma_enable_offset_resolved_to_level0"])
+        self.assertTrue(result["dma_level0_enable_start_value_verified"])
         self.assertFalse(result["runtime_handler_choice_confirmed"])
         self.assertFalse(result["runtime_dma_completion_confirmed"])
 
@@ -174,12 +175,12 @@ class Stage74SCUDMAAuditTests(unittest.TestCase):
         result = audit_dma_chain(data, 0x80, HELPER_ENTRY)
         self.assertFalse(result["three_handler_argument_tags_verified"])
 
-    def test_wrong_d1en_start_value_fails(self):
+    def test_wrong_d0en_start_value_fails(self):
         data = dma_fixture()
         put16(data, DISPATCHER_ENTRY + 0x104, 0x0001)
         result = audit_dma_chain(data, 0x80, HELPER_ENTRY)
-        self.assertTrue(result["dispatcher_d1en_start_write_verified"])
-        self.assertFalse(result["dma_level1_enable_start_value_verified"])
+        self.assertTrue(result["dispatcher_d0en_start_write_verified"])
+        self.assertFalse(result["dma_level0_enable_start_value_verified"])
 
     def test_guarded_and_zero_seeded_count_updates(self):
         result = _audit_command_count(count_fixture(), COUNT_ADDRESS)
