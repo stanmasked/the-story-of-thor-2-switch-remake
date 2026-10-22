@@ -14,16 +14,13 @@ from pathlib import Path
 
 from stage18_writer_guard_flow import be16, iso_file_payload
 from stage35_table_tail_link import branch_destination, movl_literal
-from stage71_callback_dispatch_chain import CODE_LOAD_ADDRESS
 from stage75_indirect_services_count_provenance import (
     LENGTH_SOURCE_GLOBAL,
     _count_length_assignments,
     _direct_store_sites,
-    _increments_base_register,
     _may_write_register,
     _resolve_callback,
 )
-from stage76_length_field_feedback_cfg import _find_routine_prologues
 
 SOURCE_FIELD_START = LENGTH_SOURCE_GLOBAL
 SOURCE_FIELD_END = SOURCE_FIELD_START + 2
@@ -117,6 +114,12 @@ def _update_registers(
         values[destination] = _signed8(opcode & 0xFF)
         return tuple(values)
 
+    if group == 0x2 and low in (4, 5, 6):  # MOV.B/W/L Rm,@-Rn
+        base = values[destination]
+        width = {4: 1, 5: 2, 6: 4}[low]
+        values[destination] = None if base is None else base - width
+        return tuple(values)
+
     if group == 0x6:
         if low == 3:  # MOV Rm,Rn
             values[destination] = values[source]
@@ -198,6 +201,8 @@ def _scan_alias_stores_from_load(
     call_boundaries = 0
 
     def execute_delay(delay_pos: int, state: tuple[int | None, ...]):
+        if delay_pos < start or delay_pos > end or delay_pos + 2 > len(data):
+            return state
         new_state, found, unknown = _execute_and_scan(
             data, delay_pos, state, base_value
         )
