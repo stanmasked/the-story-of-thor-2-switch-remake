@@ -5,7 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 from stage70_vdp1_status_trigger_audit import (
+    CODE_LOAD_ADDRESS,
     VDP1_REGISTER_BASE,
+    find_negative_writer_callback_ids,
     scan_status_writes,
     scan_vdp1_register_writes,
     summarize,
@@ -49,6 +51,39 @@ def ptmr_store_fixture(mode):
     return bytes(data)
 
 
+def callback_registration_fixture():
+    data = bytearray(0x400)
+    writer_entry = 0x100
+    dispatcher_entry = 0x200
+    writer_address = CODE_LOAD_ADDRESS + writer_entry
+    dispatcher_address = CODE_LOAD_ADDRESS + dispatcher_entry
+
+    # Registration caller: callback pointer in R5, dispatcher in R2,
+    # and callback id 64 in the JSR delay slot.
+    put_pc_literal_load(data, 0x20, 5, 0x340, writer_address)
+    put_pc_literal_load(data, 0x22, 2, 0x344, dispatcher_address)
+    put16(data, 0x24, 0x420B)
+    put16(data, 0x26, 0xE440)
+
+    # Callback writes -1 through the shared status pointer.
+    put16(data, writer_entry, 0xE2FF)
+    put_pc_literal_load(data, writer_entry + 2, 3, 0x354, STATUS_ADDRESS)
+    put16(data, writer_entry + 4, 0x2320)
+
+    # Dispatcher signature: R4 is scaled by four and R5 is stored into
+    # the selected callback-table slot.
+    put_pc_literal_load(data, dispatcher_entry, 0, 0x348, 0x06090000)
+    put16(data, dispatcher_entry + 2, 0x7FF8)
+    put_pc_literal_load(data, dispatcher_entry + 4, 2, 0x34C, 0x06091000)
+    put16(data, dispatcher_entry + 6, 0x6343)
+    put_pc_literal_load(data, dispatcher_entry + 8, 1, 0x350, 0x06092000)
+    put16(data, dispatcher_entry + 10, 0x4308)
+    put16(data, dispatcher_entry + 12, 0x2F42)
+    put16(data, dispatcher_entry + 14, 0x1F31)
+    put16(data, dispatcher_entry + 16, 0x0356)
+    return bytes(data)
+
+
 class Stage70StatusTriggerAuditTests(unittest.TestCase):
     def test_explicit_negative_status_write_is_detected(self):
         loads, writes = scan_status_writes(status_store_fixture(), STATUS_ADDRESS)
@@ -56,6 +91,14 @@ class Stage70StatusTriggerAuditTests(unittest.TestCase):
         self.assertEqual(len(writes), 1)
         self.assertEqual(writes[0]["constant_class"], "negative")
         self.assertEqual(writes[0]["constant_value"], -1)
+
+    def test_negative_status_writer_is_registered_through_indexed_dispatcher(self):
+        self.assertEqual(
+            find_negative_writer_callback_ids(
+                callback_registration_fixture(), STATUS_ADDRESS
+            ),
+            [64],
+        )
 
     def test_status_store_in_branch_delay_slot_is_detected(self):
         data = bytearray(0x60)
