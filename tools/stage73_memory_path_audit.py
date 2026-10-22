@@ -24,8 +24,8 @@ from stage72_status_producer_order import audit_callback_body
 
 VDP1_VRAM_BASE = 0x25C00000
 HELPER_RANGE_BOUNDS = (0x20200000, 0x20300000, 0x00200000, 0x00300000)
-PRIMARY_VIDEO_WINDOW = (0x25A00000, 0x25FE0000)
-ALIAS_VIDEO_WINDOW = (0x05A00000, 0x05FE0000)
+PRIMARY_BBUS_WINDOW = (0x25A00000, 0x25FE0000)
+ALIAS_BBUS_WINDOW = (0x05A00000, 0x05FE0000)
 TRANSFER_STATE_FLAG = 0x06088514
 TRANSFER_DESTINATION_SLOT = 0x0608850C
 TRANSFER_LENGTH_SLOT = 0x06088510
@@ -140,7 +140,7 @@ def _empty_result() -> dict:
         "helper_generic_memmove_path_selected_for_callback_arguments": False,
         "special_path_sets_transfer_state_flag": False,
         "special_path_stores_destination_and_byte_length": False,
-        "destination_matches_primary_video_memory_window": False,
+        "destination_matches_primary_bbus_window": False,
         "special_path_has_two_call_sites": False,
         "generic_bytewise_overlap_safe_memmove_signature_verified": False,
         "generic_memmove_forward_and_backward_loops_verified": False,
@@ -248,18 +248,18 @@ def audit_helper_transfer(
     result["helper_generic_memmove_path_selected_for_callback_arguments"] = (
         selected_path == 0x4E
     )
-    result["destination_matches_primary_video_memory_window"] = (
-        PRIMARY_VIDEO_WINDOW[0] <= destination < PRIMARY_VIDEO_WINDOW[1]
+    result["destination_matches_primary_bbus_window"] = (
+        PRIMARY_BBUS_WINDOW[0] <= destination < PRIMARY_BBUS_WINDOW[1]
     )
 
     special_literals = (
         (0x7A, 3, TRANSFER_STATE_FLAG),
         (0x7E, 3, TRANSFER_DESTINATION_SLOT),
         (0x82, 3, TRANSFER_LENGTH_SLOT),
-        (0x92, 3, PRIMARY_VIDEO_WINDOW[0]),
-        (0x98, 3, PRIMARY_VIDEO_WINDOW[1]),
-        (0xA8, 3, ALIAS_VIDEO_WINDOW[0]),
-        (0xAE, 3, ALIAS_VIDEO_WINDOW[1]),
+        (0x92, 3, PRIMARY_BBUS_WINDOW[0]),
+        (0x98, 3, PRIMARY_BBUS_WINDOW[1]),
+        (0xA8, 3, ALIAS_BBUS_WINDOW[0]),
+        (0xAE, 3, ALIAS_BBUS_WINDOW[1]),
         (0xE4, 3, TRANSFER_FINAL_FLAG),
     )
     special_literals_verified = all(
