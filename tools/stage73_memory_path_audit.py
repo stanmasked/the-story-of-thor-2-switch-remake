@@ -254,13 +254,19 @@ def audit_helper_transfer(
         (0x98, 3, PRIMARY_VIDEO_WINDOW[1]),
         (0xA8, 3, ALIAS_VIDEO_WINDOW[0]),
         (0xAE, 3, ALIAS_VIDEO_WINDOW[1]),
-        (0xD8, 3, CODE_LOAD_ADDRESS + 0x7C8A0),
-        (0xDE, 3, CODE_LOAD_ADDRESS + 0x7C900),
         (0xE4, 3, TRANSFER_FINAL_FLAG),
     )
     special_literals_verified = all(
         _literal(data, helper_entry + offset, register, value)
         for offset, register, value in special_literals
+    )
+    first_target_literal = movl_literal(data, helper_entry + 0xD8)
+    second_target_literal = movl_literal(data, helper_entry + 0xDE)
+    special_targets_resolved = (
+        first_target_literal is not None and first_target_literal[2] == 3
+        and second_target_literal is not None and second_target_literal[2] == 3
+        and CODE_LOAD_ADDRESS <= first_target_literal[1] < CODE_LOAD_ADDRESS + len(data)
+        and CODE_LOAD_ADDRESS <= second_target_literal[1] < CODE_LOAD_ADDRESS + len(data)
     )
     special_stores_and_calls = all(
         be16(data, helper_entry + offset) == opcode
@@ -286,6 +292,7 @@ def audit_helper_transfer(
     )
     result["special_path_has_two_call_sites"] = (
         special_literals_verified
+        and special_targets_resolved
         and special_stores_and_calls
         and be16(data, helper_entry + 0xD8) == 0xD312
         and be16(data, helper_entry + 0xDE) == 0xD312
@@ -329,18 +336,20 @@ def audit_helper_transfer(
                     and be16(data, memmove_entry + 0x10) == 0x8D15
                 )
 
-    first_target = CODE_LOAD_ADDRESS + 0x7C8A0
-    second_target = CODE_LOAD_ADDRESS + 0x7C900
+    first_target = first_target_literal[1] if special_targets_resolved else -1
+    second_target = second_target_literal[1] if special_targets_resolved else -1
     first_entry = first_target - CODE_LOAD_ADDRESS
     second_entry = second_target - CODE_LOAD_ADDRESS
     first_leaf_verified = (
-        all(be16(data, first_entry + 2 * i) == opcode
-            for i, opcode in enumerate(FIRST_TARGET_OPCODES))
+        special_targets_resolved
+        and all(be16(data, first_entry + 2 * i) == opcode
+                for i, opcode in enumerate(FIRST_TARGET_OPCODES))
         and be16(data, first_entry + 0x5C) == 0x000B
         and be16(data, first_entry + 0x5E) == 0x0636
     )
-    second_prologue_verified = _words_match(
-        data, second_entry, SECOND_TARGET_DISPATCHER_OPCODES
+    second_prologue_verified = (
+        special_targets_resolved
+        and _words_match(data, second_entry, SECOND_TARGET_DISPATCHER_OPCODES)
     )
     result["first_special_target_is_verified_leaf_helper"] = first_leaf_verified
     result["second_special_target_is_verified_dma_dispatcher"] = False
@@ -354,16 +363,25 @@ def audit_helper_transfer(
             and int.from_bytes(data[second_entry + 0x44:second_entry + 0x48], "big") == 0x25FE0008
             and _literal(data, second_entry + 0xAC, 0, 0x25FE0010)
         )
-        handler_literals = (
-            _literal(data, second_entry + 0x26, 12, CODE_LOAD_ADDRESS + 0x7CA28)
-            and _literal(data, second_entry + 0x2C, 12, CODE_LOAD_ADDRESS + 0x7CA98)
-            and _literal(data, second_entry + 0x32, 12, CODE_LOAD_ADDRESS + 0x7CB08)
-        )
+        handler_literals = []
+        for offset in (0x26, 0x2C, 0x32):
+            item = movl_literal(data, second_entry + offset)
+            handler_literals.append(
+                item is not None and item[2] == 12
+                and CODE_LOAD_ADDRESS <= item[1] < CODE_LOAD_ADDRESS + len(data)
+            )
+        handler_offsets = [
+            movl_literal(data, second_entry + offset)[1] - CODE_LOAD_ADDRESS
+            for offset in (0x26, 0x2C, 0x32)
+            if movl_literal(data, second_entry + offset) is not None
+            and CODE_LOAD_ADDRESS <= movl_literal(data, second_entry + offset)[1] < CODE_LOAD_ADDRESS + len(data)
+        ]
         handler_entries = (
-            _words_match(data, 0x7CA28, {0x00: 0x4F22, 0x02: 0x7FF8})
-            and _words_match(data, 0x7CA98, {0x00: 0x4F22, 0x02: 0x7FF8})
-            and _words_match(data, 0x7CB08, {0x00: 0x4F22, 0x02: 0x7FF8})
+            len(handler_offsets) == 3
+            and all(_words_match(data, offset, {0x00: 0x4F22, 0x02: 0x7FF8})
+                    for offset in handler_offsets)
         )
+        handler_literals = all(handler_literals)
         result["scu_dma_register_block_literals_verified"] = dma_register_literals
         result["three_in_image_transfer_handlers_verified"] = (
             handler_literals and handler_entries
