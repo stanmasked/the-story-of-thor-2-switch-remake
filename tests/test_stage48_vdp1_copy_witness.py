@@ -56,7 +56,7 @@ class Stage48WitnessTests(unittest.TestCase):
         r = self.report()
         self.assertEqual(r["descriptor_count"], 2)
         self.assertEqual(r["commands_expected_by_descriptors"], 2)
-        self.assertTrue(r["pending_count_matches_commands_not_descriptors"])
+        self.assertTrue(r["pending_count_matches_descriptor_count"])
 
     def test_exact_vram_reconstruction(self):
         r = self.report()
@@ -84,15 +84,22 @@ class Stage48WitnessTests(unittest.TestCase):
 
     def test_per_descriptor_count_budget_mismatch(self):
         r = self.report(manifest(pending_count_before=1))
-        self.assertFalse(r["pending_count_matches_commands_not_descriptors"])
+        self.assertFalse(r["pending_count_matches_descriptor_count"])
         self.assertTrue(r["predicted_vram_equals_after_dump"])
         self.assertFalse(r["copy_path_consistent_with_observation"])
 
     def test_count_descriptors_not_same_as_commands(self):
         records = [{"destination_index": 0, "copy_count": 2}]
+        r = self.report(manifest(records, pending_count_before=1))
+        self.assertTrue(r["pending_count_equals_descriptor_count"])
+        self.assertTrue(r["pending_count_matches_descriptor_count"])
+        self.assertFalse(r["pending_count_equals_command_count"])
+
+    def test_one_descriptor_two_commands_old_budget_rejected(self):
+        records = [{"destination_index": 0, "copy_count": 2}]
         r = self.report(manifest(records, pending_count_before=2))
-        self.assertFalse(r["pending_count_equals_descriptor_count"])
-        self.assertTrue(r["pending_count_matches_commands_not_descriptors"])
+        self.assertFalse(r["pending_count_matches_descriptor_count"])
+        self.assertFalse(r["copy_path_consistent_with_observation"])
 
     def test_detect_outside_write(self):
         obj = manifest()
