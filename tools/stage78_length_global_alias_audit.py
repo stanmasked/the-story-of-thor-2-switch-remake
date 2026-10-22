@@ -62,7 +62,7 @@ def _store_effect(
     group = opcode >> 12
     base_register = (opcode >> 8) & 0xF
     base_value = registers[base_register]
-    source_field_store = None
+    source_field_store: tuple[int, int, str, int, int] | None = None
     unresolved_indexed = None
 
     if group == 0x2 and (opcode & 0xF) in (0, 1, 2):
@@ -176,7 +176,11 @@ def _update_registers(
 def _execute_and_scan(
     data: bytes, pos: int, registers: tuple[int | None, ...],
     initial_pointer_value: int,
-) -> tuple[tuple[int | None, ...], set[tuple[int, int, str]], set[tuple[int, int, str]]]:
+) -> tuple[
+    tuple[int | None, ...],
+    set[tuple[int, int, str, int, int]],
+    set[tuple[int, int, str]],
+]:
     store, unresolved = _store_effect(data, pos, registers, initial_pointer_value)
     updated = _update_registers(data, pos, registers)
     stores = {store} if store is not None else set()
@@ -195,8 +199,8 @@ def _scan_alias_stores_from_load(
     end = min(len(data) - 2, load_pos + max_span)
     queue = deque([(start, initial)])
     visited = set()
-    stores = set()
-    unresolved_indexed = set()
+    stores: set[tuple[int, int, str, int, int]] = set()
+    unresolved_indexed: set[tuple[int, int, str]] = set()
     backward_edges_skipped = 0
     call_boundaries = 0
 
