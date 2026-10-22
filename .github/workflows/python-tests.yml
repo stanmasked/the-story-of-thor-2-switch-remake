@@ -65,3 +65,37 @@ jobs:
             /tmp/thor2-demo.ppm
             /tmp/thor2-demo-status.txt
           retention-days: 14
+
+  native-platform-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile host tests for libnx-independent platform adapters
+        run: g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/switch_platform_test.cpp -o /tmp/thor2-platform-test
+      - name: Test input mapping and RGBA8 framebuffer presentation
+        run: /tmp/thor2-platform-test
+
+  switch-nro:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify devkitPro and libnx
+        run: |
+          test -n "$DEVKITPRO"
+          test -f "$DEVKITPRO/libnx/switch_rules"
+          command -v aarch64-none-elf-g++
+          command -v make
+      - name: Build Nintendo Switch NRO
+        run: make -f Makefile.switch
+      - name: Verify NRO artifact exists
+        run: |
+          test -s thor2-stage63.nro
+          ls -lh thor2-stage63.nro
+      - name: Upload Nintendo Switch NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage63-switch-nro
+          path: thor2-stage63.nro
+          retention-days: 14
