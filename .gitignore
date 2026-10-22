@@ -93,3 +93,7 @@ stage48_redacted.json
 *.private-cram
 *.private-vdp2-regs
 *private-palette-audit*.json
+
+# Stage60: private framebuffer and priority/shadow evidence.
+*private-priority-shadow*.json
+*private-vdp1-framebuffer*.dat
