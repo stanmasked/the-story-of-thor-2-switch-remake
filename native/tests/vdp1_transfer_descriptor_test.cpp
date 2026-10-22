@@ -76,5 +76,23 @@ int main() {
     descriptor = TransferDescriptor{0x06091234u, 0xFFFFu, 2};
     assert(!make_transfer_copy_plan(descriptor, &plan));
 
+    // Producer formula: mask factor A to six bits, multiply by factor B,
+    // then divide by eight. The maximum possible count is 2008.
+    assert(derive_block_count_from_metadata(0xC5u, 16u) == 10u);
+    assert(derive_block_count_from_metadata(0x3Fu, 0xFFu) == 2008u);
+    assert(derive_block_count_from_metadata(1u, 7u) == 0u);
+    assert(derive_block_count_from_metadata(1u, 8u) == 1u);
+    assert(derive_block_count_from_metadata(0u, 255u) == 0u);
+
+    // Source index selects an 8-byte slot from the object-provided base.
+    std::uint32_t source_address = 0;
+    assert(compute_source_address(0x06090000u, 0x1234u, &source_address));
+    assert(source_address == 0x060991A0u);
+    assert(compute_source_address(0x06090000u, 0u, &source_address));
+    assert(source_address == 0x06090000u);
+    assert(!compute_source_address(0x06090001u, 1u, &source_address));
+    assert(!compute_source_address(0xFFFFFFF8u, 1u, &source_address));
+    assert(!compute_source_address(0x06090000u, 1u, nullptr));
+
     return 0;
 }

@@ -28,6 +28,30 @@ struct TransferCopyPlan {
     std::int16_t block_count;
 };
 
+// Producer-side derivations verified by static cross-reference analysis:
+// the source index is an unsigned word scaled by eight, and the block count
+// is ((metadata byte +2 & 0x3F) * metadata byte +3) >> 3.
+inline std::uint16_t derive_block_count_from_metadata(
+    std::uint8_t factor_a, std::uint8_t factor_b) noexcept {
+    const std::uint32_t product =
+        static_cast<std::uint32_t>(factor_a & 0x3Fu) *
+        static_cast<std::uint32_t>(factor_b);
+    return static_cast<std::uint16_t>(product >> 3);
+}
+
+inline bool compute_source_address(std::uint32_t source_base,
+                                   std::uint16_t source_index,
+                                   std::uint32_t* out) noexcept {
+    if (!out || (source_base & 3u) != 0)
+        return false;
+    const std::uint32_t offset =
+        static_cast<std::uint32_t>(source_index) * 8u;
+    if (source_base > std::numeric_limits<std::uint32_t>::max() - offset)
+        return false;
+    *out = source_base + offset;
+    return true;
+}
+
 inline std::uint16_t read_be16(const std::uint8_t* p) noexcept {
     return static_cast<std::uint16_t>(
         (static_cast<std::uint16_t>(p[0]) << 8) |
