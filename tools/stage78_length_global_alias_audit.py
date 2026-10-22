@@ -68,27 +68,27 @@ def _store_effect(
     if group == 0x2 and (opcode & 0xF) in (0, 1, 2):
         width = {0: 1, 1: 2, 2: 4}[opcode & 0xF]
         if base_value is not None and _overlaps_source_field(base_value, width):
-            source_field_store = (pos, width, "direct")
+            source_field_store = (pos, width, "direct", base_value, base_value)
     elif group == 0x2 and (opcode & 0xF) in (4, 5, 6):
         width = {4: 1, 5: 2, 6: 4}[opcode & 0xF]
         if base_value is not None and _overlaps_source_field(base_value - width, width):
-            source_field_store = (pos, width, "predecrement")
+            source_field_store = (pos, width, "predecrement", base_value, base_value - width)
     elif group == 0x1:
         width = 4
         address = None if base_value is None else base_value + (opcode & 0xF) * 4
         if address is not None and _overlaps_source_field(address, width):
-            source_field_store = (pos, width, "long-displacement")
+            source_field_store = (pos, width, "long-displacement", base_value, address)
     elif group == 0x8 and base_register not in (4, 5, 8, 9, 11, 13, 15):
         width = 1
         address = None if base_value is None else base_value + (opcode & 0xF)
         if address is not None and _overlaps_source_field(address, width):
-            source_field_store = (pos, width, "byte-displacement")
+            source_field_store = (pos, width, "byte-displacement", base_value, address)
     elif group == 0 and (opcode & 0xF) in (4, 5, 15):
         width = {4: 1, 5: 2, 15: 4}[opcode & 0xF]
         index_value = registers[0]
         if base_value is not None and index_value is not None:
             if _overlaps_source_field(base_value + index_value, width):
-                source_field_store = (pos, width, "indexed")
+                source_field_store = (pos, width, "indexed", base_value, base_value + index_value)
         elif base_value is not None and abs(base_value - SOURCE_FIELD_START) <= 0x40:
             unresolved_indexed = (pos, initial_pointer_value, "unknown-index")
 
@@ -340,16 +340,17 @@ def analyze(image: Path) -> dict:
             paths_truncated += int(result["state_limit_reached"])
             backward_edges_skipped += result["backward_edges_skipped"]
             call_boundaries += result["call_boundaries"]
-            for pos, width, kind in result["stores"]:
-                all_store_sites.add((pos, width, kind))
-                if base_value != SOURCE_FIELD_START:
-                    neighbor_alias_sites.add((pos, width, kind))
+            for pos, width, kind, effective_base, effective_address in result["stores"]:
+                store_record = (pos, width, kind, effective_base, effective_address)
+                all_store_sites.add(store_record)
+                if effective_base != SOURCE_FIELD_START:
+                    neighbor_alias_sites.add(store_record)
             unresolved_indexed_sites.update(result["unresolved_indexed"])
 
     widths = {
-        "byte": sum(1 for _, width, _ in all_store_sites if width == 1),
-        "word": sum(1 for _, width, _ in all_store_sites if width == 2),
-        "long": sum(1 for _, width, _ in all_store_sites if width == 4),
+        "byte": sum(1 for _, width, _, _, _ in all_store_sites if width == 1),
+        "word": sum(1 for _, width, _, _, _ in all_store_sites if width == 2),
+        "long": sum(1 for _, width, _, _, _ in all_store_sites if width == 4),
     }
     raw_occurrences, unmatched_raw_occurrences = _raw_pointer_occurrences(
         data, SOURCE_FIELD_START
