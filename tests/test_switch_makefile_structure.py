@@ -29,6 +29,13 @@ class SwitchMakefileStructureTests(unittest.TestCase):
         self.assertIn("$(ARCH) $(DEFINES) $(INCLUDE) -D__SWITCH__", MAKEFILE)
         self.assertIn("CXXFLAGS = $(CFLAGS) -std=gnu++17 -fexceptions", MAKEFILE)
 
+    def test_nro_metadata_flags_are_explicit(self):
+        self.assertIn("export NROFLAGS += --nacp=$(CURDIR)/$(TARGET).nacp", MAKEFILE)
+        self.assertIn("APP_TITLE    := Thor2 Native Sandbox", MAKEFILE)
+        self.assertIn("APP_AUTHOR   := RIKITU LAB", MAKEFILE)
+        self.assertIn("APP_VERSION  := 0.1.0", MAKEFILE)
+        self.assertIn("NO_ICON      := 1", MAKEFILE)
+
     def test_original_game_assets_are_not_packaged(self):
         self.assertIn("DATA         :=", MAKEFILE)
         self.assertNotIn("ROMFS :=", MAKEFILE)
