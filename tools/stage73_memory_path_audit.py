@@ -74,15 +74,21 @@ MEMMOVE_OPCODES = {
     0x40: 0x0009,
 }
 
-EPILOGUE_TARGET_OPCODES = (
-    0x53F1, 0x2232, 0x60E2, 0x911B, 0x001E, 0x7F18, 0x4F26,
-    0x6AF6, 0x6BF6, 0x6CF6, 0x6DF6, 0x000B, 0x6EF6,
+FIRST_TARGET_OPCODES = (
+    0xE601, 0x5349, 0x2369, 0x3360, 0x8B06, 0x6353, 0x4308, 0x4308,
+    0x4300, 0x6242, 0xD021, 0x0326, 0xE602, 0x5349, 0x2369, 0x3360,
+    0x8B06, 0x6353, 0x4308, 0x4308, 0x4300, 0x5241, 0xD01C, 0x0326,
+    0x6653, 0x5342, 0xD01B, 0x4608, 0x4608, 0x4600, 0x0636, 0x7004,
+    0x5343, 0x5244, 0x232B, 0x0636, 0x5346, 0x7008, 0x5245, 0x5147,
+    0x4328, 0x4118, 0x232B, 0x231B, 0x5248, 0x232B, 0x000B, 0x0636,
 )
-SECOND_TARGET_BODY_OPCODES = (
-    0x323C, 0x622F, 0x935A, 0x303C, 0x302C, 0x5001, 0x88FE,
-    0x8B02, 0x65C3, 0xA00D, 0x66B3, 0x65A3, 0x66E2, 0x63DF,
-    0x6233, 0x4208, 0x4308, 0x4300,
-)
+SECOND_TARGET_DISPATCHER_OPCODES = {
+    0x00: 0x2FE6, 0x02: 0x2FD6, 0x04: 0x2FC6, 0x06: 0x2F86,
+    0x08: 0x4F22, 0x0A: 0x7FF8, 0x0C: 0x6D43, 0x0E: 0x0002,
+    0x10: 0x4009, 0x12: 0x4009, 0x14: 0xC90F, 0x16: 0x2F02,
+    0x18: 0x0002, 0x1A: 0x930D, 0x1C: 0x2039, 0x1E: 0xCBF0,
+    0x20: 0x400E, 0x22: 0xA017,
+}
 
 
 def _literal(data: bytes, position: int, register: int, value: int) -> bool:
@@ -123,6 +129,7 @@ def _select_helper_path(
 def _empty_result() -> dict:
     return {
         "callback_count_pointer_matches_submit_pending_count": False,
+        "callback_length_field_is_adjacent_to_submit_pending_count": False,
         "callback_length_formula_is_signed_word_times_32_plus_2": False,
         "callback_destination_is_vdp1_vram_base": False,
         "callback_helper_pointer_resolves_into_loaded_code": False,
@@ -136,8 +143,10 @@ def _empty_result() -> dict:
         "generic_bytewise_overlap_safe_memmove_signature_verified": False,
         "generic_memmove_forward_and_backward_loops_verified": False,
         "generic_memmove_handles_equal_pointers_and_zero_length": False,
-        "first_special_target_matches_shared_epilogue": False,
-        "second_special_target_starts_with_entry_prologue": False,
+        "first_special_target_is_verified_leaf_helper": False,
+        "second_special_target_is_verified_dma_dispatcher": False,
+        "scu_dma_register_block_literals_verified": False,
+        "three_in_image_transfer_handlers_verified": False,
         "special_path_call_return_contract_resolved": False,
         "actual_vdp1_memory_write_proven": False,
         "runtime_callback_invocation_confirmed": False,
@@ -167,6 +176,11 @@ def audit_helper_transfer(
     result["callback_count_pointer_matches_submit_pending_count"] = (
         expected_count_address is not None
         and count_pointer[1] == expected_count_address
+        and be16(data, callback_entry + 0x1C) == 0x6621
+    )
+    result["callback_length_field_is_adjacent_to_submit_pending_count"] = (
+        expected_count_address is not None
+        and count_pointer[1] + 2 == expected_count_address
         and be16(data, callback_entry + 0x1C) == 0x6621
     )
     result["callback_length_formula_is_signed_word_times_32_plus_2"] = (
@@ -240,8 +254,8 @@ def audit_helper_transfer(
         (0x98, 3, PRIMARY_VIDEO_WINDOW[1]),
         (0xA8, 3, ALIAS_VIDEO_WINDOW[0]),
         (0xAE, 3, ALIAS_VIDEO_WINDOW[1]),
-        (0xD8, 3, CODE_LOAD_ADDRESS + 0x7C4A0),
-        (0xDE, 3, CODE_LOAD_ADDRESS + 0x7C500),
+        (0xD8, 3, CODE_LOAD_ADDRESS + 0x7C8A0),
+        (0xDE, 3, CODE_LOAD_ADDRESS + 0x7C900),
         (0xE4, 3, TRANSFER_FINAL_FLAG),
     )
     special_literals_verified = all(
@@ -315,20 +329,55 @@ def audit_helper_transfer(
                     and be16(data, memmove_entry + 0x10) == 0x8D15
                 )
 
-    first_target = CODE_LOAD_ADDRESS + 0x7C4A0
-    second_target = CODE_LOAD_ADDRESS + 0x7C500
+    first_target = CODE_LOAD_ADDRESS + 0x7C8A0
+    second_target = CODE_LOAD_ADDRESS + 0x7C900
     first_entry = first_target - CODE_LOAD_ADDRESS
     second_entry = second_target - CODE_LOAD_ADDRESS
-    result["first_special_target_matches_shared_epilogue"] = (
+    first_leaf_verified = (
         all(be16(data, first_entry + 2 * i) == opcode
-            for i, opcode in enumerate(EPILOGUE_TARGET_OPCODES))
+            for i, opcode in enumerate(FIRST_TARGET_OPCODES))
+        and be16(data, first_entry + 0x5C) == 0x000B
+        and be16(data, first_entry + 0x5E) == 0x0636
     )
-    result["second_special_target_starts_with_entry_prologue"] = (
-        _words_match(data, second_entry, {0: 0x2FE6, 2: 0x2FD6, 4: 0x2FC6, 6: 0x2FB6})
+    second_prologue_verified = _words_match(
+        data, second_entry, SECOND_TARGET_DISPATCHER_OPCODES
     )
-    # The first target restores a saved PR and several registers before RTS;
-    # its ordinary return to the following call site is not established.
-    result["special_path_call_return_contract_resolved"] = False
+    result["first_special_target_is_verified_leaf_helper"] = first_leaf_verified
+    result["second_special_target_is_verified_dma_dispatcher"] = False
+    result["scu_dma_register_block_literals_verified"] = False
+    result["three_in_image_transfer_handlers_verified"] = False
+
+    if second_prologue_verified:
+        dma_register_literals = (
+            int.from_bytes(data[second_entry + 0x3C:second_entry + 0x40], "big") == 0x25FE0000
+            and int.from_bytes(data[second_entry + 0x40:second_entry + 0x44], "big") == 0x25FE0004
+            and int.from_bytes(data[second_entry + 0x44:second_entry + 0x48], "big") == 0x25FE0008
+            and _literal(data, second_entry + 0xAC, 0, 0x25FE0010)
+        )
+        handler_literals = (
+            _literal(data, second_entry + 0x26, 12, CODE_LOAD_ADDRESS + 0x7CA28)
+            and _literal(data, second_entry + 0x2C, 12, CODE_LOAD_ADDRESS + 0x7CA98)
+            and _literal(data, second_entry + 0x32, 12, CODE_LOAD_ADDRESS + 0x7CB08)
+        )
+        handler_entries = (
+            _words_match(data, 0x7CA28, {0x00: 0x4F22, 0x02: 0x7FF8})
+            and _words_match(data, 0x7CA98, {0x00: 0x4F22, 0x02: 0x7FF8})
+            and _words_match(data, 0x7CB08, {0x00: 0x4F22, 0x02: 0x7FF8})
+        )
+        result["scu_dma_register_block_literals_verified"] = dma_register_literals
+        result["three_in_image_transfer_handlers_verified"] = (
+            handler_literals and handler_entries
+        )
+        result["second_special_target_is_verified_dma_dispatcher"] = (
+            dma_register_literals and handler_literals and handler_entries
+            and be16(data, second_entry + 0xCC) == 0x000B
+            and be16(data, second_entry + 0xCE) == 0x6EF6
+        )
+
+    result["special_path_call_return_contract_resolved"] = (
+        first_leaf_verified
+        and result["second_special_target_is_verified_dma_dispatcher"]
+    )
     result["actual_vdp1_memory_write_proven"] = False
     result["runtime_callback_invocation_confirmed"] = False
     return result
