@@ -72,19 +72,21 @@ def _movw_literal(data: bytes, pos: int) -> tuple[int, int, int] | None:
     return literal_pos, be16(data, literal_pos), register
 
 
-def _writes_r13(opcode: int) -> bool:
+def _may_write_register(opcode: int, register: int) -> bool:
     group = opcode >> 12
-    register = (opcode >> 8) & 0xF
+    destination = (opcode >> 8) & 0xF
     # Conservative destination-register classification for the SH-2 groups
     # that can write Rn. Stores in groups 0/1/2 are deliberately excluded.
-    return group in (0x3, 0x4, 0x5, 0x6, 0x7, 0x9, 0xD, 0xE) and register == 13
+    return group in (0x3, 0x4, 0x5, 0x6, 0x7, 0x9, 0xD, 0xE) and destination == register
 
 
-def _r13_unchanged(data: bytes, start: int, end: int, skip_ranges=()) -> bool:
+def _register_unchanged(
+    data: bytes, start: int, end: int, register: int, skip_ranges=()
+) -> bool:
     for pos in range(start, end, 2):
         if any(left <= pos < right for left, right in skip_ranges):
             continue
-        if _writes_r13(be16(data, pos)):
+        if _may_write_register(be16(data, pos), register):
             return False
     return True
 
@@ -340,9 +342,9 @@ def audit_dma_chain(data: bytes, callback_entry: int, helper_entry: int) -> dict
         "three_handler_parameter_globals_verified": False,
         "three_handler_state_byte_clear_pattern_verified": False,
         "handlers_write_scu_registers_directly": False,
-        "dispatcher_d1en_start_write_verified": False,
-        "dispatcher_r13_offset_dataflow_verified": False,
-        "dma_level1_enable_start_value_verified": False,
+        "dispatcher_d0en_start_write_verified": False,
+        "dispatcher_dma_enable_offset_resolved_to_level0": False,
+        "dma_level0_enable_start_value_verified": False,
         "runtime_handler_choice_confirmed": False,
         "runtime_dma_completion_confirmed": False,
     }
@@ -416,34 +418,40 @@ def audit_dma_chain(data: bytes, callback_entry: int, helper_entry: int) -> dict
         item["handler_direct_scu_register_reference_found"] for item in handler_results
     )
 
-    # R13 is initialized to 1 in the outer helper, preserved by the first
-    # transfer helper, then scaled by 4, 4, and 2 before the indexed store.
-    r13_helper_ranges_clear = (
-        be16(data, helper_entry + 0x08) == 0xED01
-        and _r13_unchanged(data, helper_entry + 0x0A, helper_entry + 0x5C)
-        and _r13_unchanged(data, helper_entry + 0x78, helper_entry + 0xD8)
-        and _r13_unchanged(data, first_entry, first_entry + 0x60)
-        and _r13_unchanged(
-            data, dispatcher_entry, dispatcher_entry + 0xA4,
+    # The dispatcher copies R4 into R13 at entry. The helper's second JSR
+    # delay slot sets R4 from R14; R14 is initialized to zero and is not changed
+    # by the helper or first target. The dispatcher then scales R13 by 32.
+    r14_zero_proven = (
+        be16(data, helper_entry + 0x0A) == 0xEE00
+        and _register_unchanged(
+            data, helper_entry + 0x0C, helper_entry + 0xD8, 14,
+            skip_ranges=((helper_entry + 0x5C, helper_entry + 0x78),)
+        )
+        and _register_unchanged(data, first_entry, first_entry + 0x60, 14)
+        and be16(data, helper_entry + 0xE2) == 0x64E3
+    )
+    dispatcher_scales_r13 = (
+        r14_zero_proven
+        and be16(data, dispatcher_entry + 0x0C) == 0x6D43
+        and _register_unchanged(
+            data, dispatcher_entry + 0x0E, dispatcher_entry + 0xA4, 13,
             skip_ranges=((dispatcher_entry + 0x38, dispatcher_entry + 0x54),)
         )
-    )
-    enable_base = movl_literal(data, dispatcher_entry + 0xAC)
-    enable_value = _movw_literal(data, dispatcher_entry + 0xAA)
-    result["dispatcher_r13_offset_dataflow_verified"] = (
-        r13_helper_ranges_clear
         and be16(data, dispatcher_entry + 0xA4) == 0x4D08
         and be16(data, dispatcher_entry + 0xA6) == 0x4D08
         and be16(data, dispatcher_entry + 0xA8) == 0x4D00
     )
-    result["dispatcher_d1en_start_write_verified"] = (
-        result["dispatcher_r13_offset_dataflow_verified"]
+    enable_base = movl_literal(data, dispatcher_entry + 0xAC)
+    enable_value = _movw_literal(data, dispatcher_entry + 0xAA)
+    result["dispatcher_dma_enable_offset_resolved_to_level0"] = dispatcher_scales_r13
+    result["dispatcher_d0en_start_write_verified"] = (
+        dispatcher_scales_r13
         and enable_base is not None and enable_base[2] == 0 and enable_base[1] == SCU_D0EN
         and be16(data, dispatcher_entry + 0xAE) == 0x0D36
         and (be16(data, dispatcher_entry + 0xAE) & 0xF00F) == 0x0006
     )
-    result["dma_level1_enable_start_value_verified"] = (
-        result["dispatcher_d1en_start_write_verified"]
+    result["dma_level0_enable_start_value_verified"] = (
+        result["dispatcher_d0en_start_write_verified"]
         and enable_value is not None and enable_value[2] == 3 and enable_value[1] == 0x0101
     )
     return result
