@@ -131,6 +131,7 @@ def _empty_result() -> dict:
         "callback_count_pointer_matches_submit_pending_count": False,
         "callback_length_field_is_adjacent_to_submit_pending_count": False,
         "callback_length_formula_is_signed_word_times_32_plus_2": False,
+        "callback_sequence_contains_no_local_count_bounds_check": False,
         "callback_destination_is_vdp1_vram_base": False,
         "callback_helper_pointer_resolves_into_loaded_code": False,
         "helper_range_dispatch_signature_verified": False,
@@ -184,11 +185,15 @@ def audit_helper_transfer(
         and be16(data, callback_entry + 0x1C) == 0x6621
     )
     result["callback_length_formula_is_signed_word_times_32_plus_2"] = (
-        be16(data, callback_entry + 0x1E) == 0x4608
+        be16(data, callback_entry + 0x1C) == 0x6621
+        and be16(data, callback_entry + 0x1E) == 0x4608
         and be16(data, callback_entry + 0x22) == 0x4608
         and be16(data, callback_entry + 0x26) == 0x4600
         and be16(data, callback_entry + 0x2A) == 0x430B
         and be16(data, callback_entry + 0x2C) == 0x7602
+    )
+    result["callback_sequence_contains_no_local_count_bounds_check"] = (
+        result["callback_length_formula_is_signed_word_times_32_plus_2"]
     )
     result["callback_destination_is_vdp1_vram_base"] = (
         destination_literal[1] == VDP1_VRAM_BASE
