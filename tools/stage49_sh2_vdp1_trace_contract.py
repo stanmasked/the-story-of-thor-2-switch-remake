@@ -41,7 +41,7 @@ def _bounded_int(value: object, minimum: int, maximum: int) -> bool:
 
 
 def _validate_event(value: object) -> dict:
-    if type(value) is not dict or value.get("role") not in FIELDS:
+    if type(value) is not dict or type(value.get("role")) is not str or value["role"] not in FIELDS:
         raise ValueError("unknown or invalid trace event role")
     if set(value) != FIELDS[value["role"]]:
         raise ValueError("trace event keys do not match role schema")
@@ -177,11 +177,13 @@ def compare_trace(program: bytes, metadata: dict,
         "source_word_values_match": values_pass,
         "full_offline_trace_contract_matches": full_pass,
         "emulator_trace_authenticity_verified": False,
+        "sh2_load_base_verified_in_live_emulator": False,
         "sh2_runtime_execution_proven": False,
         "handler_39_link_proven": False,
         "raw_addresses_or_original_code_exported": False,
         "limitations": [
             "Event records are untrusted operator-supplied JSONL, not authenticated emulator instrumentation.",
+            "SH-2 load base 0x06004000 is statically inferred and still needs emulator validation.",
             "Only one call to the statically identified Stage46 submit path is modeled.",
             "Other SH-2 instructions and delay slots between recorded roles are not covered.",
             "A complete offline match is insufficient to prove real gameplay execution.",
