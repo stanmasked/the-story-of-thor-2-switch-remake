@@ -22,8 +22,11 @@ from stage75_indirect_services_count_provenance import (
     _resolve_callback,
 )
 
-ROUTINE_PROLOGUE = (
-    0x2FC6, 0x2FB6, 0x2FA6, 0x2F96, 0x2F86, 0xE801, 0x4F22, 0x7FF8,
+ROUTINE_PROLOGUE_FIXED = (
+    (0x00, 0x2FE6), (0x02, 0xE072), (0x06, 0x2FD6),
+    (0x08, 0x2FC6), (0x0A, 0x2FB6), (0x0C, 0x2FA6),
+    (0x0E, 0x2F96), (0x10, 0x2F86), (0x12, 0xE801),
+    (0x14, 0x4F22), (0x16, 0x7FF8),
 )
 
 
@@ -33,10 +36,11 @@ def _word(data: bytes, pos: int) -> int:
 
 def _find_routine_prologues(data: bytes) -> list[int]:
     found = []
-    for pos in range(0, len(data) - 2 * len(ROUTINE_PROLOGUE), 2):
-        if all(
-            _word(data, pos + 2 * index) == opcode
-            for index, opcode in enumerate(ROUTINE_PROLOGUE)
+    for pos in range(0, len(data) - 0x18, 2):
+        if (
+            all(_word(data, pos + offset) == opcode
+                for offset, opcode in ROUTINE_PROLOGUE_FIXED)
+            and (_word(data, pos + 0x04) & 0xFF00) == 0xD200
         ):
             found.append(pos)
     return found
