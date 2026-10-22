@@ -114,7 +114,7 @@ def verify_boot_layout(raw: bytes) -> dict:
     reserved_overlap = first_read_address < boot_ip_end
     crosses_system_tail = transfer_end > SYSTEM_RESERVED_TAIL_START
     mapped_inside_hwr = transfer_end <= RAM_BASE + HIGH_WORK_RAM_BYTES
-    if reserved_overlap or not mapped_inside_hwr:
+    if reserved_overlap or crosses_system_tail or not mapped_inside_hwr:
         raise ValueError("boot first-read mapping conflicts with system RAM or exceeds WRAM-H")
     static = static_preflight(program)
     return {
