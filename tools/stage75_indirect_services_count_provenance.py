@@ -160,22 +160,44 @@ def _count_length_assignments(
     return [by_store[pos] for pos in sorted(by_store)]
 
 
-def _audit_length_source_writers(data: bytes, source_address: int) -> dict:
+def _audit_length_source_writers(
+    data: bytes, source_address: int, stream_base_address: int | None
+) -> dict:
     stores = _direct_store_sites(data, source_address)
     r10_zero_seeded = 0
+    r13_postincrement_sources = 0
+    r13_stream_seeded_sources = 0
+    stream_loads = (
+        _pc_literal_sites(data, stream_base_address)
+        if stream_base_address is not None else []
+    )
+    source_loads = _pc_literal_sites(data, source_address)
     for store_pos in stores:
         store = _word(data, store_pos)
         if store & 0xF00F != 0x2001:
             continue
         source_reg = (store >> 4) & 0xF
-        if source_reg != 10:
-            continue
         base_reg = (store >> 8) & 0xF
         matching_loads = [
-            item for item in _pc_literal_sites(data, source_address)
+            item for item in source_loads
             if item[2] == base_reg and store_pos - 0x22 <= item[0] < store_pos
         ]
         if not matching_loads:
+            continue
+        read_pos = store_pos - 2
+        read_op = _word(data, read_pos)
+        if (
+            read_op & 0xF0FF == 0x60D1
+            and ((read_op >> 8) & 0xF) == source_reg
+            and ((read_op >> 4) & 0xF) == 13
+        ):
+            r13_postincrement_sources += 1
+            if any(
+                item[2] == 13 and read_pos - 0x1000 <= item[0] < read_pos
+                for item in stream_loads
+            ):
+                r13_stream_seeded_sources += 1
+        if source_reg != 10:
             continue
         seed_candidates = [
             pos for pos in range(max(0, store_pos - 0x1000), store_pos, 2)
@@ -195,6 +217,8 @@ def _audit_length_source_writers(data: bytes, source_address: int) -> dict:
     return {
         "length_source_global_direct_word_writer_signatures": len(stores),
         "length_source_global_writer_r10_zero_seeded_sites": r10_zero_seeded,
+        "length_source_global_writer_r13_postincrement_sources": r13_postincrement_sources,
+        "length_source_global_writer_r13_stream_seeded_sources": r13_stream_seeded_sources,
         "length_source_global_writer_values_resolved": False,
     }
 
@@ -245,7 +269,9 @@ def analyze(image: Path) -> dict:
     slot_b = _slot_dispatch_sites(data, SERVICE_SLOT_B)
     slot_a_stores = _direct_store_sites(data, SERVICE_SLOT_A)
     slot_b_stores = _direct_store_sites(data, SERVICE_SLOT_B)
-    source_writers = _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL)
+    source_writers = _audit_length_source_writers(
+        data, LENGTH_SOURCE_GLOBAL, count_address
+    )
     d0md_sites = _pc_literal_sites(data, DMA_MODE_REGISTER)
 
     return {
@@ -266,6 +292,12 @@ def analyze(image: Path) -> dict:
             ],
             "length_source_global_writer_r10_zero_seeded_sites": source_writers[
                 "length_source_global_writer_r10_zero_seeded_sites"
+            ],
+            "length_source_global_writer_r13_postincrement_sources": source_writers[
+                "length_source_global_writer_r13_postincrement_sources"
+            ],
+            "length_source_global_writer_r13_stream_seeded_sources": source_writers[
+                "length_source_global_writer_r13_stream_seeded_sources"
             ],
             "length_source_global_writer_values_resolved": source_writers[
                 "length_source_global_writer_values_resolved"
