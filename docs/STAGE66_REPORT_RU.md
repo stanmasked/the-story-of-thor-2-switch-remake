@@ -21,8 +21,8 @@
 ## Изменения в переносимом коде
 
 - `native/vdp1_transfer_descriptor.hpp` — парсер синтетических big-endian записей и построитель безопасного плана копирования.
-- `native/tests/vdp1_transfer_descriptor_test.cpp` — тесты порядка байтов, ширины полей, адресации VRAM, длины payload, signed-count и граничных условий.
-- `.github/workflows/python-tests.yml` — новые тесты добавлены в существующую host-job, без дополнительного runner.
+- `native/tests/vdp1_transfer_descriptor_test.cpp` — тесты порядка байтов, ширины полей, адресации VRAM, длины payload, signed-count и граничных условий. Дополнительно проверяется fail-closed поведение: невалидный разбор или план не меняет ранее заполненную выходную структуру.
+- `.github/workflows/python-tests.yml` — новый C++17-тест компилируется с `-Wall -Wextra -Werror -pedantic` и запускается в существующей host-job, без дополнительного runner.
 
 В публичный репозиторий не добавлялись оригинальные байты ISO, извлечённый исполняемый файл, оригинальные спрайты или трассы.
 
