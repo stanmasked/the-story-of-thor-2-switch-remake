@@ -226,7 +226,7 @@ def analyze(image: Path) -> dict:
         "analysis": {
             "callback_id64_chain_verified": callback_chain,
             "containing_routine_prologue_unique": (
-                entry is not None and len([p for p in prologues if p < min(targets)]) >= 1
+                entry is not None and len(prologues) == 1
             ),
             "r10_zero_seed_dominates_source_writer_on_direct_cfg": (
                 bool(r10_states)
