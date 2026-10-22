@@ -75,3 +75,8 @@ stage48_redacted.json
 *private-session*.json
 *private-capture-audit*.json
 *private-bundle*.json
+
+# Stage53: original-game PC watchlist must never enter public CI.
+*private-mednafen-watchlist*.json
+*private-breakpoint*.json
+*private-watchlist*.json
