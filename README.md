@@ -63,6 +63,7 @@ Python 3.11+ and only the standard library:
     python tools/stage46_vdp1_submit_gate.py "/private/The Story of Thor 2.iso" -o /private/stage46_redacted.json
     python tools/stage47_vdp1_producer_reconciliation.py "/private/The Story of Thor 2.iso" -o /private/stage47_redacted.json
     python tools/stage70_vdp1_status_trigger_audit.py "/private/The Story of Thor 2.iso" -o /private/stage70_redacted.json
+    python tools/stage71_callback_dispatch_chain.py "/private/The Story of Thor 2.iso" -o /private/stage71_redacted.json
 
 Analysis tools report structural metadata and aggregate statistics only unless their documentation says otherwise. Stage 70 and Stage 71 deliberately redact status/global addresses and executable offsets. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
