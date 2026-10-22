@@ -29,8 +29,15 @@ class SwitchMakefileStructureTests(unittest.TestCase):
         self.assertIn("$(ARCH) $(DEFINES) $(INCLUDE) -D__SWITCH__", MAKEFILE)
         self.assertIn("CXXFLAGS = $(CFLAGS) -std=gnu++17 -fexceptions", MAKEFILE)
 
-    def test_nro_metadata_flags_are_explicit(self):
-        self.assertIn("export NROFLAGS += --nacp=$(CURDIR)/$(TARGET).nacp", MAKEFILE)
+    def test_nro_metadata_flags_are_explicit_and_outer_only(self):
+        self.assertIn("export NROFLAGS += --nacp=$(TOPDIR)/$(TARGET).nacp", MAKEFILE)
+        self.assertEqual(MAKEFILE.count("export NROFLAGS += --nacp="), 1)
+        self.assertLess(
+            MAKEFILE.index("export LIBPATHS"),
+            MAKEFILE.index("export NROFLAGS += --nacp="),
+        )
+        outer_else = MAKEFILE.index("\\nelse\\n\\n.PHONY: all")
+        self.assertLess(MAKEFILE.index("export NROFLAGS += --nacp="), outer_else)
         self.assertIn("APP_TITLE    := Thor2 Native Sandbox", MAKEFILE)
         self.assertIn("APP_AUTHOR   := RIKITU LAB", MAKEFILE)
         self.assertIn("APP_VERSION  := 0.1.0", MAKEFILE)
