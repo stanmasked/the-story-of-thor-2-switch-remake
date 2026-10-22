@@ -10,8 +10,10 @@ using namespace thor2::vdp1;
 int main() {
     static_assert(kVdp1CommandRecordBytes == 32, "command stride");
     static_assert(kTransferDescriptorBytes == 8, "transfer descriptor stride");
+    static_assert(kVdp1CommandTerminatorWord == 0x8000u, "VDP1 end marker");
+    static_assert(kVdp1CommandTerminatorStorageBytes == 4u, "end marker storage stride");
 
-    RecordStreamCursor commands{0x06010000u, 64u, 0u, 0u,
+    RecordStreamCursor commands{0x06010000u, 68u, 0u, 0u,
                                 static_cast<std::uint32_t>(kVdp1CommandRecordBytes)};
     RecordStreamCursor transfers{0x06020000u, 16u, 0u, 0u,
                                  static_cast<std::uint32_t>(kTransferDescriptorBytes)};
@@ -29,7 +31,14 @@ int main() {
     assert(reserve_record_slot(&commands, &command_address));
     assert(command_address == 0x06010020u);
     assert(commands.used_bytes == 64u && commands.record_count == 2u);
+    // The end marker occupies four bytes after the final command record but
+    // does not increment the logical count of 32-byte command records.
     assert(!reserve_record_slot(&commands, &command_address));
+    assert(reserve_raw_bytes(&commands, kVdp1CommandTerminatorStorageBytes,
+                             &command_address));
+    assert(command_address == 0x06010040u);
+    assert(commands.used_bytes == 68u && commands.record_count == 2u);
+    assert(!reserve_raw_bytes(&commands, 1u, &command_address));
 
     assert(reserve_record_slot(&transfers, &transfer_address));
     assert(transfer_address == 0x06020008u);
