@@ -144,7 +144,9 @@ def analyze_vram_geometry(vram: bytes, max_commands: int = 4096) -> dict:
     sizes: list[int] = []
     for offset in sorted(positions):
         ctrl = _word(vram, offset)
-        if (ctrl & 15) not in SPRITE_COMMANDS:
+        # Stage44 includes the END-bit terminator in visited positions;
+        # it is NOT a malformed sprite command and must not be decoded.
+        if ctrl & 0x8000 or (ctrl & 15) not in SPRITE_COMMANDS:
             continue
         try:
             descriptor = decode_sprite_descriptor(vram, offset)
