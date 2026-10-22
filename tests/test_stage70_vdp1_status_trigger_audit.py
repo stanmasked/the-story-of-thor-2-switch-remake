@@ -1,0 +1,87 @@
+import unittest
+
+from stage70_vdp1_status_trigger_audit import (
+    VDP1_REGISTER_BASE,
+    scan_status_writes,
+    scan_vdp1_register_writes,
+    summarize,
+)
+
+STATUS_ADDRESS = 0x06090020
+
+
+def put16(data, position, value):
+    data[position:position + 2] = value.to_bytes(2, "big")
+
+
+def put32(data, position, value):
+    data[position:position + 4] = value.to_bytes(4, "big")
+
+
+def put_pc_literal_load(data, position, register, target, value):
+    pc_base = (position + 4) & ~3
+    displacement = (target - pc_base) // 4
+    assert (target - pc_base) % 4 == 0
+    assert 0 <= displacement <= 0xFF
+    put16(data, position, 0xD000 | (register << 8) | displacement)
+    put32(data, target, value)
+
+
+def status_store_fixture(value=-1):
+    data = bytearray(0x60)
+    put16(data, 0, 0xE200 | (value & 0xFF))  # MOV #imm,R2
+    put_pc_literal_load(data, 2, 3, 0x40, STATUS_ADDRESS)
+    put16(data, 4, 0x2320)  # MOV.B R2,@R3
+    return bytes(data)
+
+
+def ptmr_store_fixture(mode):
+    data = bytearray(0x60)
+    put_pc_literal_load(data, 0, 3, 0x40, VDP1_REGISTER_BASE + 2)
+    put16(data, 2, 0x2321)  # MOV.W R2,@R3 (FBCR)
+    put16(data, 4, 0xE200 | mode)  # MOV #mode,R2
+    put16(data, 6, 0x7302)  # ADD #2,R3 (FBCR -> PTMR)
+    put16(data, 8, 0x2321)  # MOV.W R2,@R3 (PTMR)
+    return bytes(data)
+
+
+class Stage70StatusTriggerAuditTests(unittest.TestCase):
+    def test_explicit_negative_status_write_is_detected(self):
+        loads, writes = scan_status_writes(status_store_fixture(), STATUS_ADDRESS)
+        self.assertEqual(len(loads), 1)
+        self.assertEqual(len(writes), 1)
+        self.assertEqual(writes[0]["constant_class"], "negative")
+        self.assertEqual(writes[0]["constant_value"], -1)
+
+    def test_status_store_in_branch_delay_slot_is_detected(self):
+        data = bytearray(0x60)
+        put_pc_literal_load(data, 0, 1, 0x40, STATUS_ADDRESS)
+        put16(data, 2, 0x430B)  # JSR @R3
+        put16(data, 4, 0x21D0)  # delay slot: MOV.B R13,@R1
+        loads, writes = scan_status_writes(bytes(data), STATUS_ADDRESS)
+        self.assertEqual(len(loads), 1)
+        self.assertEqual(len(writes), 1)
+        self.assertEqual(writes[0]["constant_class"], "other")
+
+    def test_fbcr_pointer_increment_identifies_ptmr_auto_mode(self):
+        writes = scan_vdp1_register_writes(ptmr_store_fixture(2))
+        ptmr = [item for item in writes if item["register_offset"] == 0x04]
+        self.assertEqual(len(ptmr), 1)
+        self.assertEqual(ptmr[0]["value"], 2)
+
+    def test_ptmr_manual_start_value_is_classified_separately(self):
+        writes = scan_vdp1_register_writes(ptmr_store_fixture(1))
+        ptmr = [item for item in writes if item["register_offset"] == 0x04]
+        self.assertEqual(len(ptmr), 1)
+        self.assertEqual(ptmr[0]["value"], 1)
+
+    def test_summary_contains_aggregates_not_private_addresses_or_offsets(self):
+        summary = summarize(status_store_fixture(), STATUS_ADDRESS, 1)
+        self.assertFalse(summary["private_addresses_or_code_offsets_emitted"])
+        self.assertNotIn("status_address", summary)
+        self.assertNotIn("store_position", str(summary))
+        self.assertNotIn(hex(STATUS_ADDRESS), str(summary))
+
+
+if __name__ == "__main__":
+    unittest.main()
