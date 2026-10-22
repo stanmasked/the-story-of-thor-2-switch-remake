@@ -166,6 +166,7 @@ class Stage67ProducerCallerTests(unittest.TestCase):
         self.assertEqual(len(chains), 1)
         self.assertTrue(chains[0]["nested_pointer_field_0xAC"])
         self.assertTrue(chains[0]["stack_slot_SP_plus_60"])
+        self.assertTrue(chains[0]["index_field_offset_0x98"])
         self.assertTrue(chains[0]["descriptor_slot_base_field_plus_9"])
         self.assertTrue(chains[0]["index_scale_8"])
 
@@ -197,6 +198,7 @@ class Stage67ProducerCallerTests(unittest.TestCase):
         self.assertEqual(result["global_state_field_0x98_comparison_candidates"], 1)
         self.assertEqual(result["field_equality_branches_skipping_producer_call"], 1)
         self.assertEqual(result["stack_SP_plus_60_nested_pointer_to_descriptor_slot_candidates"], 1)
+        self.assertEqual(result["descriptor_slot_index_uses_nested_field_plus_0x98"], 1)
         self.assertEqual(result["descriptor_slot_address_uses_R13_plus_9_and_index_times_8"], 1)
 
     def test_non_r14_delay_slot_is_not_counted_as_forwarding(self):
