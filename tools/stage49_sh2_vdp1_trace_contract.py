@@ -150,7 +150,7 @@ def compare_trace(program: bytes, metadata: dict,
 
     m = parse_manifest(metadata)
     copied_commands = sum(d["copy_count"] for d in m["descriptors"])
-    budget_agrees = m["pending_count_before"] == copied_commands
+    budget_agrees = m["pending_count_before"] == len(m["descriptors"])
     gate_enabled = m["status_before"] < 0 and m["pending_count_before"] > 0
     post_reset = m["status_after"] == 0 and m["pending_count_after"] == 0
     shape_pass = all(mismatches[k] == 0 for k in ("event_roles", "pc", "destination", "registers"))
@@ -170,7 +170,8 @@ def compare_trace(program: bytes, metadata: dict,
         "mismatched_32bit_values": mismatches["values"] if sources is not None else None,
         "mismatched_register_or_flag_observations": mismatches["registers"],
         "command_source_bytes_supplied_privately": sources is not None,
-        "pending_budget_equals_command_count": budget_agrees,
+        "pending_budget_equals_descriptor_count": budget_agrees,
+        "total_inner_loop_commands": copied_commands,
         "initial_negative_flag_and_nonzero_pending": gate_enabled,
         "final_flag_and_pending_count_are_zero": post_reset,
         "static_opcode_pc_and_write_order_match": shape_pass,
