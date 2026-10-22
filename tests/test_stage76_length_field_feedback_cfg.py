@@ -94,7 +94,7 @@ class Stage76LengthFieldFeedbackCFGTests(unittest.TestCase):
         put16(data, 0x24, 0xE101)  # skipped by BRA
         put16(data, 0x26, 0x0009)
         put16(data, 0x28, 0x22A1)
-        states, _, _ = _direct_cfg_states_at_targets(
+        states, _, _, _ = _direct_cfg_states_at_targets(
             data, entry, 0x28, {0x28}, LENGTH_ADDRESS
         )
         self.assertEqual(states[0x28], {(True, False, False, False)})
