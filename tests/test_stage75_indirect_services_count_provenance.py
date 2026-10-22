@@ -91,8 +91,8 @@ def initializer_fixture():
         put_pc_literal_load(data, pos, 1, literal, CODE_LOAD_ADDRESS + INITIALIZER_ENTRY)
         put16(data, call, 0x410B)
     for pos, literal, call in producer_sites:
-        put_pc_literal_load(data, pos, 3, literal, CODE_LOAD_ADDRESS + PRODUCER_ENTRY)
-        put16(data, call, 0x430B)
+        put_pc_literal_load(data, pos, 1, literal, CODE_LOAD_ADDRESS + PRODUCER_ENTRY)
+        put16(data, call, 0x410B)
     return data
 
 
