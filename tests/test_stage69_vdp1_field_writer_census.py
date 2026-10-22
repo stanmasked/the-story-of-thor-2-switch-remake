@@ -1,5 +1,8 @@
+import sys
 import unittest
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from stage69_vdp1_field_writer_census import (
     count_derivation_window,
     field_write_candidates,
