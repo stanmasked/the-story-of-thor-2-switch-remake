@@ -16,5 +16,5 @@ CFLAGS := -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections $(ARC
 CXXFLAGS := $(CFLAGS) -std=gnu++17 -fexceptions
 ASFLAGS := -g $(ARCH)
 LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
-LIBS := -lstdc++ -lm
+LIBS := -lnx -lstdc++ -lm
 LIBDIRS := $(PORTLIBS) $(LIBNX)
