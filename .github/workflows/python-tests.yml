@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: \${{ github.workflow }}-\${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   validate-and-build:
@@ -59,7 +59,7 @@ jobs:
       - name: Build Nintendo Switch NRO in pinned devkitPro container
         run: |
           docker run --rm \
-            --volume "\${GITHUB_WORKSPACE}:/workspace" \
+            --volume "${GITHUB_WORKSPACE}:/workspace" \
             --workdir /workspace \
             devkitpro/devkita64:20260219 \
             bash -lc '
