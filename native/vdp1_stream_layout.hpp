@@ -24,6 +24,17 @@ struct RecordStreamCursor {
     std::uint32_t record_size_bytes;
 };
 
+// Model the observed submit-gate predicate. A negative signed status is
+// consumed (reset to zero) before checking the descriptor count, so even a
+// zero-count gate pass clears the status. This does not perform the copy.
+inline bool begin_transfer_submit(std::int8_t* status,
+                                 std::uint16_t descriptor_count) noexcept {
+    if (!status || *status >= 0)
+        return false;
+    *status = 0;
+    return descriptor_count != 0;
+}
+
 // Reserve raw bytes without changing the logical record count. This models
 // the 4-byte command terminator storage after the last 32-byte command record.
 inline bool reserve_raw_bytes(RecordStreamCursor* cursor,
