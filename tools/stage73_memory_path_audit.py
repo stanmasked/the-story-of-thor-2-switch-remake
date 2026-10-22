@@ -367,7 +367,7 @@ def audit_helper_transfer(
             int.from_bytes(data[second_entry + 0x3C:second_entry + 0x40], "big") == 0x25FE0000
             and int.from_bytes(data[second_entry + 0x40:second_entry + 0x44], "big") == 0x25FE0004
             and int.from_bytes(data[second_entry + 0x44:second_entry + 0x48], "big") == 0x25FE0008
-            and _literal(data, second_entry + 0x9A, 0, 0x25FE0010)
+            and _literal(data, second_entry + 0xAC, 0, 0x25FE0010)
         )
         handler_literals = []
         for offset in (0x26, 0x2C, 0x32):
