@@ -97,3 +97,8 @@ stage48_redacted.json
 # Stage60: private framebuffer and priority/shadow evidence.
 *private-priority-shadow*.json
 *private-vdp1-framebuffer*.dat
+
+# Stage61: private CPU-accessible draw framebuffer and register mirror.
+*private-framebuffer*
+*private-fb-audit*.json
+*private-register-mirror*

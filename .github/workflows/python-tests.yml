@@ -22,3 +22,13 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Syntax check
         run: python -m compileall -q tools
+
+  native-framebuffer-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile native ROM-free framebuffer module
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_framebuffer_test.cpp -o /tmp/thor2-vdp1-host-test
+      - name: Run native framebuffer invariants
+        run: /tmp/thor2-vdp1-host-test
