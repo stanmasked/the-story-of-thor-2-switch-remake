@@ -386,13 +386,21 @@ def audit_helper_transfer(
             and all(_words_match(data, offset, {0x00: 0x4F22, 0x02: 0x7FF8})
                     for offset in handler_offsets)
         )
+        handler_branches = (
+            branch_destination(second_entry + 0x56, be16(data, second_entry + 0x56))
+            == ("BT", second_entry + 0x26)
+            and branch_destination(second_entry + 0x5A, be16(data, second_entry + 0x5A))
+            == ("BT", second_entry + 0x2C)
+            and branch_destination(second_entry + 0x5E, be16(data, second_entry + 0x5E))
+            == ("BT", second_entry + 0x32)
+        )
         handler_literals = all(handler_literals)
         result["scu_dma_register_block_literals_verified"] = dma_register_literals
         result["three_in_image_transfer_handlers_verified"] = (
-            handler_literals and handler_entries
+            handler_literals and handler_entries and handler_branches
         )
         result["second_special_target_is_verified_dma_dispatcher"] = (
-            dma_register_literals and handler_literals and handler_entries
+            dma_register_literals and handler_literals and handler_entries and handler_branches
             and be16(data, second_entry + 0xCC) == 0x000B
             and be16(data, second_entry + 0xCE) == 0x6EF6
         )
