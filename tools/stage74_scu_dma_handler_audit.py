@@ -241,6 +241,27 @@ def _count_increment_candidates(data: bytes, count_address: int) -> list[dict]:
     return list(by_store.values())
 
 
+def _is_zero_reset_store(data: bytes, pointer_reg: int, store_pos: int) -> bool:
+    opcode = be16(data, store_pos)
+    if opcode & 0xF00F != 0x2001 or (opcode >> 8) & 0xF != pointer_reg:
+        return False
+    source_reg = (opcode >> 4) & 0xF
+    for zero_pos in range(max(0, store_pos - 0x10), store_pos, 2):
+        zero_op = be16(data, zero_pos)
+        if (
+            zero_op & 0xF0FF == 0xE000
+            and (zero_op >> 8) & 0xF == source_reg
+            and zero_op & 0xFF == 0
+            and not any(
+                (mid_op := be16(data, mid)) & 0xF0FF == 0xE000
+                and (mid_op >> 8) & 0xF == source_reg
+                for mid in range(zero_pos + 2, store_pos, 2)
+            )
+        ):
+            return True
+    return False
+
+
 def _audit_command_count(data: bytes, count_address: int) -> dict:
     increments = _count_increment_candidates(data, count_address)
     guarded = [item for item in increments if item["guards"]]
@@ -261,6 +282,7 @@ def _audit_command_count(data: bytes, count_address: int) -> dict:
                 op & 0xF00F == 0x2001
                 and (op >> 8) & 0xF == pointer_reg
                 and store_pos not in increment_positions
+                and not _is_zero_reset_store(data, pointer_reg, store_pos)
             ):
                 assignments.add(store_pos)
     # Stores from a known zero register are resets; the remaining stores have
@@ -343,7 +365,7 @@ def audit_dma_chain(data: bytes, callback_entry: int, helper_entry: int) -> dict
     result["helper_call_targets_resolved"] = True
     result["source_destination_count_register_block_pattern_verified"] = (
         _words_match(data, first_entry, {
-            **{offset: opcode for offset, opcode in enumerate(FIRST_TARGET_OPCODES) if offset % 2 == 0},
+            index * 2: opcode for index, opcode in enumerate(FIRST_TARGET_OPCODES)
         })
         and all(
             (literal := movl_literal(data, first_entry + offset)) is not None
