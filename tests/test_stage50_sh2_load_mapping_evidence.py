@@ -86,7 +86,7 @@ class Stage50MappingTests(unittest.TestCase):
         self.assertEqual(r["complete_static_image_mapping_candidates"], 2)
         self.assertEqual(r["complete_alternative_image_mapping_candidates"], 1)
         self.assertFalse(r["expected_mapping_uniquely_supported_by_supplied_snapshot"])
-        self.assertTrue(r["runtime_image_mapping_observed"])
+        self.assertTrue(r["untrusted_ram_mapping_matches_at_expected_base"])
 
     def test_one_corrupt_role_breaks_full_mapping(self):
         data = bytearray(ram_images())
