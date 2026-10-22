@@ -84,3 +84,7 @@ stage48_redacted.json
 # Stage54: generated local provisional Saturn CUE and emulator/BIOS file evidence.
 *.private-mode1.cue
 *private-launch*.json
+
+# Stage55: private Yabause/RetroArch launch plan and environment evidence.
+*private-yabause-launch*.json
+*private-hle-launch*.json
