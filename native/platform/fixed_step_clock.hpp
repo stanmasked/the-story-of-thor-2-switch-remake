@@ -11,8 +11,7 @@ public:
     explicit FixedStepClock(std::uint64_t tick_frequency,
                             std::uint32_t target_hz = 60,
                             std::uint32_t max_steps_per_frame = 5)
-        : frequency_(tick_frequency),
-          step_ticks_(target_hz == 0 ? 0 : tick_frequency / target_hz),
+        : step_ticks_(target_hz == 0 ? 0 : tick_frequency / target_hz),
           max_frame_delta_(tick_frequency / 4),
           max_steps_per_frame_(max_steps_per_frame),
           valid_(tick_frequency > 0 && target_hz > 0 &&
@@ -62,7 +61,6 @@ public:
     }
 
 private:
-    std::uint64_t frequency_;
     std::uint64_t step_ticks_;
     std::uint64_t max_frame_delta_;
     std::uint32_t max_steps_per_frame_;
