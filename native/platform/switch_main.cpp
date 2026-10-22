@@ -71,8 +71,15 @@ int main(int, char**) {
         u32 stride_bytes = 0;
         auto* output = static_cast<std::uint32_t*>(
             framebufferBegin(&framebuffer, &stride_bytes));
-        if (!output)
+        if (!output) {
+            // Keep framebufferBegin/framebufferEnd paired even on an error path.
+            framebufferEnd(&framebuffer);
             break;
+        }
+        if (stride_bytes % sizeof(std::uint32_t) != 0) {
+            framebufferEnd(&framebuffer);
+            break;
+        }
         const std::size_t stride_pixels = stride_bytes / sizeof(std::uint32_t);
         const bool rendered = thor2::platform::present_rgba8(
             surface, output, stride_pixels * kFramebufferHeight,
