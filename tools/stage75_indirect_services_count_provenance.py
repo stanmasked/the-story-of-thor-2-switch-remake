@@ -254,8 +254,8 @@ def _service_entry_audit(data: bytes) -> dict:
         "service_entry_literal_reference_sites": len(all_refs),
         "service_entry_nearby_direct_store_sites": len(nearby_store_sites),
         "service_entry_dereference_call_patterns_verified": int(dereference_calls),
-        "fixed_hwrm_direct_tail_jump_pattern_verified": direct_tail_jump,
-        "service_entry_has_mixed_pointer_and_direct_jump_use": (
+        "service_vector_tail_jump_through_pointer_verified": direct_tail_jump,
+        "service_entry_has_tail_jump_and_indirect_call_use": (
             direct_tail_jump and dereference_calls >= 6
         ),
         "service_entry_runtime_contents_resolved": False,
