@@ -473,6 +473,12 @@ def summarize(
         event for event in hardware_writes
         if event["register_offset"] == 0x04
     ]
+    callback_registration_note = (
+        " A registration-like call passes that writer to a callback-table "
+        "dispatcher under ID(s) " + ", ".join(str(value) for value in callback_ids) + "."
+        if callback_ids
+        else " No matching callback-table registration was recognized."
+    )
     return {
         "submit_gate_signatures": submit_gate_count,
         "status_pointer_pc_literal_loads": len(status_loads),
@@ -500,10 +506,10 @@ def summarize(
         "interpretation": (
             "One bounded PC-literal pointer path writes value 2 to PTMR, which "
             "selects automatic drawing at frame start. The scan finds a direct "
-            "constant -1 store to the shared status byte and a registration-like "
-            "call passing that writer to a dispatcher under callback ID 64. "
-            "Static registration does not prove runtime invocation or prove that "
-            "the callback wakes the submit gate. Other status writes and "
+            "constant -1 store to the shared status byte."
+            + callback_registration_note
+            + " Static registration does not prove runtime invocation or prove "
+            "that the callback wakes the submit gate. Other status writes and "
             "framebuffer-control paths remain only statically correlated."
         ),
     }
