@@ -55,8 +55,8 @@ class Stage50MappingTests(unittest.TestCase):
 
     def test_static_preflight_does_not_claim_ram_capture(self):
         r = static_preflight(PROGRAM)
-        self.assertFalse(r["emulator_snapshot_provided"])
-        self.assertFalse(r["runtime_image_mapping_observed"])
+        self.assertFalse(r["high_work_ram_bytes_supplied"])
+        self.assertFalse(r["untrusted_ram_mapping_matches_at_expected_base"])
         self.assertEqual(r["static_sh2_role_count"], 12)
 
     def test_summarize_without_snapshot(self):
