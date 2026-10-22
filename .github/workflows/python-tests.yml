@@ -31,10 +31,12 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_framebuffer_test.cpp -o /tmp/thor2-vdp1-host-test
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_transfer_descriptor_test.cpp -o /tmp/thor2-vdp1-descriptor-test
-      - name: Run native VDP1 invariants and synthetic descriptor tests
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_stream_layout_test.cpp -o /tmp/thor2-vdp1-stream-layout-test
+      - name: Run native VDP1 invariants and synthetic stream tests
         run: |
           /tmp/thor2-vdp1-host-test
           /tmp/thor2-vdp1-descriptor-test
+          /tmp/thor2-vdp1-stream-layout-test
 
   native-gameplay-host:
     runs-on: ubuntu-latest
