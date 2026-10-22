@@ -169,6 +169,11 @@ class Stage57VDP1GeometryTests(unittest.TestCase):
         self.assertEqual(r["sprite_entries_by_bits_per_pixel"], {"4": 1, "16": 1})
         self.assertTrue(r["vdp1_chain"]["end_bit_reached"])
 
+    def test_end_terminator_is_never_malformed_sprite(self):
+        report = analyze_vram_geometry(synthetic_vram())
+        self.assertEqual(report["malformed_or_out_of_bounds_sprite_records"], 0)
+        self.assertTrue(report["vdp1_chain"]["end_bit_reached"])
+
     def test_chain_one_malformed_sprite(self):
         r = analyze_vram_geometry(synthetic_vram(mode=6))
         self.assertEqual(r["malformed_or_out_of_bounds_sprite_records"], 1)
