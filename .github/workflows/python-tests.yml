@@ -11,38 +11,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  python-tests:
+  host-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Synthetic-only unit tests
+      - name: Synthetic-only Python unit tests
         run: python -m unittest discover -s tests -v
-      - name: Syntax check
+      - name: Python syntax check
         run: python -m compileall -q tools
-
-  native-framebuffer-host:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Compile native ROM-free framebuffer module
+      - name: Compile all native host test programs
         run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/vdp1_framebuffer_test.cpp -o /tmp/thor2-vdp1-host-test
-      - name: Run native framebuffer invariants
-        run: /tmp/thor2-vdp1-host-test
-
-  native-gameplay-host:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Compile original-asset-free C++17 gameplay tests and interactive host demo
-        run: |
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/sandbox_test.cpp -o /tmp/thor2-sandbox-test
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/demo/sandbox_cli.cpp -o /tmp/thor2-sandbox
-      - name: Exercise deterministic gameplay, full synthetic goal and rasterizer
-        run: /tmp/thor2-sandbox-test
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/switch_platform_test.cpp -o /tmp/thor2-platform-test
+      - name: Run native framebuffer, gameplay and platform adapter tests
+        run: |
+          /tmp/thor2-vdp1-host-test
+          /tmp/thor2-sandbox-test
+          /tmp/thor2-platform-test
       - name: Exercise scripted host demo and synthetic screenshot
         run: |
           /tmp/thor2-sandbox --help
@@ -56,7 +46,7 @@ jobs:
           assert len(data) == len(header) + 320 * 240 * 3, 'invalid pixel data size'
           print('synthetic 320x240 PPM frame: PASS')
           PY
-      - name: Upload playable Linux host demo and synthetic screenshot
+      - name: Upload Linux host demo and synthetic screenshot
         uses: actions/upload-artifact@v4
         with:
           name: stage62-linux-host-sandbox
@@ -66,19 +56,10 @@ jobs:
             /tmp/thor2-demo-status.txt
           retention-days: 14
 
-  native-platform-host:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Compile host tests for libnx-independent platform adapters
-        run: g++ -std=c++17 -O2 -Wall -Wextra -Werror -pedantic -Inative native/tests/switch_platform_test.cpp -o /tmp/thor2-platform-test
-      - name: Test input mapping and RGBA8 framebuffer presentation
-        run: /tmp/thor2-platform-test
-
   switch-nro:
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkita64:latest
+      image: devkitpro/devkita64:20260219
     steps:
       - uses: actions/checkout@v4
       - name: Verify devkitPro and libnx
