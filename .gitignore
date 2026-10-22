@@ -67,3 +67,6 @@ stage48_redacted.json
 *.private-snapshot
 *private-load-map*.json
 *private-ram*.dat
+
+# Stage51: private Saturn boot/header evidence.
+*private-boot-map*.json
