@@ -13,6 +13,7 @@ INCLUDES := native
 
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 CFLAGS := -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections $(ARCH) -D__SWITCH__
+CFLAGS += $(INCLUDE)
 CXXFLAGS := $(CFLAGS) -std=gnu++17 -fexceptions
 ASFLAGS := -g $(ARCH)
 LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
