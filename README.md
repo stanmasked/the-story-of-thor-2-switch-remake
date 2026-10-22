@@ -2,7 +2,9 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven.** This repository contains research tools, not a playable game.
+**Status: Stage 47 — added a bounded *static cross-check* of the Stage16 descriptor-writer candidate against the Stage46 VDP1 submit gate, comparing the staging buffer, pending count and pointer-slot addresses, checking the capacity-branch destination, and enumerating short direct flag/count stores. No original ISO was reanalysed in this session; source-buffer provenance, runtime execution and handler-39 linkage remain unproven.**
+
+Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. A negative signed status byte enables submission; a nonzero 16-bit count in R5 and a PC-relative RAM buffer pointer in R4 supply 8-byte descriptors (u32 command source, u16 VRAM index ×8, i16 command count). Status is cleared before count testing; after JSR the buffer pointer is stored and the pending count cleared. Actual VDP1 execution and handler-39 producer identity remain unproven. This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -58,6 +60,7 @@ Python 3.11+ and only the standard library:
     python tools/stage44_vdp1_vram_audit.py "/private/The Story of Thor 2.iso" -o /private/stage44_static_summary.json
     python tools/stage45_vdp1_command_copy.py "/private/The Story of Thor 2.iso" -o /private/stage45_redacted.json
     python tools/stage46_vdp1_submit_gate.py "/private/The Story of Thor 2.iso" -o /private/stage46_redacted.json
+    python tools/stage47_vdp1_producer_reconciliation.py "/private/The Story of Thor 2.iso" -o /private/stage47_redacted.json
 
 Stages 01–07 and 09–46 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
@@ -109,8 +112,10 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 - **Stage 45:** verifies one concrete SH-2 VRAM command-copy procedure, sourced by a PC-relative VDP1-base load: an unsigned 16-bit index ×8 addresses VRAM, eight 32-bit writes copy exactly 32 bytes, and two signed BF loop targets advance command pointers.
 - **Stage 46:** resolves the direct caller to a gated command submission routine: negative signed status flag, cleared before zero-count test; an 8-byte descriptor buffer from a PC-relative RAM literal in R4 and 16-bit record count in R5 feed Stage45's JSR; the pointer is recorded and count cleared after copying. Confirms one complete gate, two source-buffer pointer loads, 16 status pointer loads and seven count pointer loads. No runtime safety bounds or handler-39 link yet.
 
-Stages 10–46 add 807 synthetic-only tests beyond the Stage 09 suite. GitHub CI runs synthetic tests without access to the original disc.
+- **Stage 47:** cross-checks the prior Stage16 8-byte descriptor writer against the Stage46 gate and Stage15 address constants, audits the capacity-branch destination, and counts bounded direct status/count stores. All tests are synthetic; original ISO cross-stage matches and execution are not yet attested.
 
-Reports: Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
+Stages 10–47 include the new Stage47 synthetic suite in addition to previous suites. GitHub CI runs synthetic tests without the original disc. GitHub CI runs synthetic tests without access to the original disc.
+
+Reports: Stage 47 (RU), Stage 46 (RU), Stage 45 (RU), Stage 44 (RU), Stage 43 (RU), Stage 42 (RU), Stage 41 (RU), Stage 40 (RU), Stage 39 (RU), Stage 38 (RU), Stage 37 (RU), Stage 36 (RU), Stage 35 (RU), Stage 34 (RU), Stage 33 (RU), Stage 32 (RU), Stage 31 (RU), Stage 30 (RU), Stage 29 (RU), Stage 28 (RU), Stage 27 (RU), Stage 26 (RU), Stage 25 (RU), Stage 24 (RU), Stage 23 (RU), Stage 22 (RU), Stage 21 (RU), Stage 20 (RU), Stage 19 (RU), Stage 18 (RU), Stage 17 (RU), Stage 16 (RU), Stage 15 (RU), Stage 14 (RU), Stage 13 (RU), Stage 12 (RU), Stage 11 (RU), Stage 10 (RU), Stage 09 (RU), Stage 08 (RU), Stage 07 (RU), Stage 06 (RU), and the Russian project roadmap are in docs.
 
 **Not done:** confirmed pixel-format decoder, restored sprites, levels, combat, native C++/SDL2 game, Switch NRO, or full-game playthrough. Distribution of a remake incorporating protected game materials requires permission from the rights holders.
