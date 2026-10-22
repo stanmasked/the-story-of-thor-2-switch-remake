@@ -212,6 +212,14 @@ def _count_increment_candidates(data: bytes, count_address: int) -> list[dict]:
                 if reset_op & 0xF00F != 0x2001 or (reset_op >> 8) & 0xF != pointer_reg:
                     continue
                 zero_reg = (reset_op >> 4) & 0xF
+                # Do not let a reset in one routine justify an increment
+                # after an intervening return. Adjacent bytes may be another
+                # entry point or an unrelated block (notably near the END helper).
+                if any(
+                    be16(data, barrier_pos) in (0x000B, 0x002B)
+                    for barrier_pos in range(reset_pos + 2, store_pos, 2)
+                ):
+                    continue
                 for zero_pos in range(max(0, pointer_pos - 0x10), reset_pos, 2):
                     zero_op = be16(data, zero_pos)
                     if (
