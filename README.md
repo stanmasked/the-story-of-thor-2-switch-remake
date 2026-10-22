@@ -2,9 +2,9 @@
 
 Research and future native Nintendo Switch remake of The Story of Thor 2 / The Legend of Oasis for Sega Saturn.
 
-**Status: Stage 62 host sandbox plus Stage 66 transfer-descriptor research model — the original-asset-free C++17 gameplay sandbox remains synthetic and is not a playable Nintendo Switch NRO. Stage66 adds a ROM-free big-endian parser and bounded copy-plan helper for the statically identified 8-byte VDP1 transfer descriptor, with synthetic host tests. The original ISO and executable remain private; no runtime VDP1 capture is claimed.**
+**Status: Stage 62 host sandbox plus Stage 66–70 static VDP1 research — the original-asset-free C++17 gameplay sandbox remains synthetic and is not a playable Nintendo Switch NRO. Stage70 combines the ROM-free signed-status gate model with an aggregate-only audit that finds a registered negative-status writer candidate and a bounded PTMR=2 automatic-draw mode write. Runtime callback invocation, submit-gate causality and frame timing remain unproven. The original ISO and executable remain private; no runtime VDP1 capture is claimed.**
 
-Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. Stage66 statically cross-checked the descriptor consumer: each 8-byte record contains a 32-bit source address, an unsigned 16-bit VDP1 destination slot scaled by 8, and a signed 16-bit block count used for 32-byte transfers. The count must be positive for finite completion; zero/negative values are not empty transfers in the original do-while loop. The portable parser and tests use synthetic data only. Actual VDP1 execution and producer/submit same-frame timing remain unproven. This repository contains research tools, not a playable game.
+Stage 46 — verified one SH-2 submit gate supplying the Stage45 32-byte VRAM command copier. Stage66 statically cross-checked the descriptor consumer: each 8-byte record contains a 32-bit source address, an unsigned 16-bit VDP1 destination slot scaled by 8, and a signed 16-bit block count used for 32-byte transfers. The count must be positive for finite completion; zero/negative values are not empty transfers in the original do-while loop. The portable parser and tests use synthetic data only. Stage70 additionally finds a status-writer callback registration candidate under ID 64 and a pointer-derived PTMR=2 write; neither static finding proves runtime execution. Actual VDP1 execution and producer/submit same-frame timing remain unproven. This repository contains research tools, not a playable game.
 
 The original Saturn ISO is processed privately and locally. Do not publish game BIN/ISO/CUE, proprietary sprites, music, video, or other original game assets. Candidate preview PNGs and analysis JSON are local research artifacts and must not be committed.
 
@@ -62,8 +62,9 @@ Python 3.11+ and only the standard library:
     python tools/stage45_vdp1_command_copy.py "/private/The Story of Thor 2.iso" -o /private/stage45_redacted.json
     python tools/stage46_vdp1_submit_gate.py "/private/The Story of Thor 2.iso" -o /private/stage46_redacted.json
     python tools/stage47_vdp1_producer_reconciliation.py "/private/The Story of Thor 2.iso" -o /private/stage47_redacted.json
+    python tools/stage70_vdp1_status_trigger_audit.py "/private/The Story of Thor 2.iso" -o /private/stage70_redacted.json
 
-Stages 01–07 and 09–46 report structural metadata and aggregate statistics only. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
+Analysis tools report structural metadata and aggregate statistics only unless their documentation says otherwise. Stage 70 deliberately redacts status/global addresses and executable offsets. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
 ## Verified progress
 
@@ -153,7 +154,7 @@ Stages 01–07 and 09–46 report structural metadata and aggregate statistics o
 
 - **Stage 69:** traces stream initialization and the command terminator. The 16-bit `0x8000` end marker occupies 4 bytes after 32-byte command records and does not increment the logical command count. Adds `reserve_raw_bytes()` and a synthetic test proving that pointer advancement and command count are independent. See docs/STAGE69_REPORT_RU.md.
 
-- **Stage 70:** models the signed-status submit-gate condition: a negative status is cleared before the descriptor count is checked, including when the count is zero. Static analysis also identified a separate memory-update pass touching address regions consistent with VDP2 VRAM/CRAM before a VDP1 submit call. The source of the negative status transition and hardware timing remain unverified. See docs/STAGE70_REPORT_RU.md.
+- **Stage 70:** models the signed-status submit-gate condition: a negative status is cleared before the descriptor count is checked, including when the count is zero. The audit finds an explicit -1 store to the same status byte, a static callback-table registration candidate under ID 64, and a pointer-derived PTMR=2 write (automatic drawing at frame start). Runtime callback invocation, submit-gate causality and frame timing remain unverified. See docs/STAGE70_REPORT_RU.md.
 
 Stages 10–66 use synthetic-only GitHub CI; original assets stay private. Original Saturn material is never uploaded.
 
