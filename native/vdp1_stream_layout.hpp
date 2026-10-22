@@ -35,6 +35,23 @@ inline bool begin_transfer_submit(std::int8_t* status,
     return descriptor_count != 0;
 }
 
+// The command-list upload path computes signed_word_count * 32 + 2 bytes.
+// Reject values whose high bit would make the original signed-word count
+// negative instead of silently reproducing a malformed length.
+inline bool command_upload_size_bytes(std::uint16_t command_count,
+                                      std::uint32_t* size_out) noexcept {
+    if (!size_out ||
+        command_count > static_cast<std::uint16_t>(
+                            std::numeric_limits<std::int16_t>::max()))
+        return false;
+    const std::uint32_t count = command_count;
+    if (count > (std::numeric_limits<std::uint32_t>::max() - 2u) /
+                    static_cast<std::uint32_t>(kVdp1CommandRecordBytes))
+        return false;
+    *size_out = count * static_cast<std::uint32_t>(kVdp1CommandRecordBytes) + 2u;
+    return true;
+}
+
 // Reserve raw bytes without changing the logical record count. This models
 // the 4-byte command terminator storage after the last 32-byte command record.
 inline bool reserve_raw_bytes(RecordStreamCursor* cursor,
