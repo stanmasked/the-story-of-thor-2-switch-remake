@@ -183,7 +183,7 @@ def find_global_field98_guards(data: bytes, producer_entry: int) -> list[dict]:
                 call_position = branch_position + 2
                 if (
                     bsr_target(call_position, be16(data, call_position)) == producer_entry
-                    and branch_target > call_position
+                    and branch_target >= call_position + 4
                 ):
                     matches.append({
                         "branch_skips_producer_call_when_field_matches": True,
