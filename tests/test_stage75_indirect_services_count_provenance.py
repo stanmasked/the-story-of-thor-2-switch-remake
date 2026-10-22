@@ -134,8 +134,8 @@ class Stage75IndirectServicesTests(unittest.TestCase):
         result = _audit_length_source_writers(data, LENGTH_SOURCE_GLOBAL, 0x0609651C)
         self.assertEqual(result["length_source_global_direct_word_writer_signatures"], 2)
         self.assertEqual(result["length_source_global_writer_r10_zero_seeded_sites"], 1)
-        self.assertEqual(result["length_source_global_writer_r13_postincrement_sources"], 1)
-        self.assertEqual(result["length_source_global_writer_r13_stream_seeded_sources"], 1)
+        self.assertEqual(result["length_source_global_writer_r13_count_field_copy_sources"], 1)
+        self.assertEqual(result["length_source_global_writer_r13_count_field_address_preserved"], 1)
         self.assertFalse(result["length_source_global_writer_values_resolved"])
 
     def test_dma_mode_register_literal_is_not_assumed_from_other_register_bases(self):
