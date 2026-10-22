@@ -251,6 +251,7 @@ def find_stack60_descriptor_slot_candidates(data: bytes) -> list[dict]:
         {
             "nested_pointer_field_0xAC": True,
             "stack_slot_SP_plus_60": True,
+            "index_field_offset_0x98": True,
             "descriptor_slot_base_field_plus_9": True,
             "index_scale_8": True,
         }
@@ -312,6 +313,9 @@ def summarize(data: bytes) -> dict:
             for item in field_guards
         ),
         "stack_SP_plus_60_nested_pointer_to_descriptor_slot_candidates": len(stack60_chains),
+        "descriptor_slot_index_uses_nested_field_plus_0x98": sum(
+            item["index_field_offset_0x98"] for item in stack60_chains
+        ),
         "descriptor_slot_address_uses_R13_plus_9_and_index_times_8": sum(
             item["descriptor_slot_base_field_plus_9"] and item["index_scale_8"]
             for item in stack60_chains
