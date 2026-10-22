@@ -145,13 +145,13 @@ class Stage75CountAndServiceTests(unittest.TestCase):
         self.assertTrue(result["initializer_resets_command_count"])
         self.assertTrue(result["all_static_producer_calls_preceded_by_zero_seed"])
 
-    def test_service_entry_has_pointer_calls_and_direct_jump_use(self):
+    def test_service_entry_has_indirect_calls_and_tail_jump_through_pointer(self):
         result = _service_entry_audit(service_fixture())
         self.assertEqual(result["service_entry_literal_reference_sites"], 9)
         self.assertEqual(result["service_entry_nearby_direct_store_sites"], 0)
         self.assertEqual(result["service_entry_dereference_call_patterns_verified"], 8)
-        self.assertTrue(result["fixed_hwrm_direct_tail_jump_pattern_verified"])
-        self.assertTrue(result["service_entry_has_mixed_pointer_and_direct_jump_use"])
+        self.assertTrue(result["service_vector_tail_jump_through_pointer_verified"])
+        self.assertTrue(result["service_entry_has_tail_jump_and_indirect_call_use"])
         self.assertFalse(result["service_entry_runtime_contents_resolved"])
 
     def test_service_slot_writer_claim_is_limited_to_local_reference_windows(self):
