@@ -2,6 +2,7 @@
 // All graphics and input are synthetic; no libnx or original game resources.
 #include "platform/input_mapping.hpp"
 #include "platform/framebuffer_presenter.hpp"
+#include "platform/fixed_step_clock.hpp"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +45,32 @@ int main() {
         const int x = game.state().x, y = game.state().y;
         game.tick(m.gameplay);
         assert(game.state().x == x && game.state().y == y);
+    }
+    {
+        thor2::platform::FixedStepClock clock(600, 60, 5);
+        assert(clock.valid());
+        assert(clock.step_ticks() == 10);
+        clock.reset(0);
+        assert(clock.advance(0) == 0);
+        assert(clock.advance(9) == 0);
+        assert(clock.advance(10) == 1);
+        assert(clock.advance(35) == 2); // 25 ticks elapsed, 2 steps + 5 carried.
+        assert(clock.advance(40) == 1); // carried remainder completes next step.
+        const auto dropped_before_stall = clock.dropped_ticks();
+        assert(clock.advance(1040) == 5); // 1000-tick stall is bounded to 150.
+        assert(clock.dropped_ticks() > dropped_before_stall);
+        clock.reset(9000);
+        assert(clock.advance(9000) == 0);
+        assert(clock.advance(9010) == 1);
+    }
+    {
+        thor2::platform::FixedStepClock invalid_zero_frequency(0);
+        thor2::platform::FixedStepClock invalid_rate(600, 0);
+        thor2::platform::FixedStepClock invalid_catchup(600, 60, 0);
+        assert(!invalid_zero_frequency.valid());
+        assert(!invalid_rate.valid());
+        assert(!invalid_catchup.valid());
+        assert(invalid_zero_frequency.advance(100) == 0);
     }
     {
         assert(pack_rgba8_for_libnx(rgba(0x12,0x34,0x56,0x78)) == 0x78563412u);
