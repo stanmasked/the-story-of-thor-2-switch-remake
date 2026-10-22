@@ -191,6 +191,73 @@ def find_global_field98_guards(data: bytes, producer_entry: int) -> list[dict]:
     return matches
 
 
+def find_stack60_descriptor_slot_candidates(data: bytes) -> list[dict]:
+    """Find the nested word -> SP+60 -> scaled descriptor-slot address pattern.
+
+    This only establishes the instruction/dataflow sequence. It does not infer
+    the semantic type of the 16-bit intermediate value.
+    """
+    candidates = set()
+    for offset_load in range(0, len(data) - 1, 2):
+        op = be16(data, offset_load)
+        if op & 0xF000 != 0x9000 or ((op >> 8) & 0x0F) != 0:
+            continue
+        literal = mov_w_pc_target(offset_load, op, len(data))
+        if literal is None or be16(data, literal) != 0x00B0:
+            continue
+
+        nested_loads = [
+            pos for pos in range(offset_load + 2, min(len(data) - 1, offset_load + 14), 2)
+            if be16(data, pos) == 0x09DE  # MOV.L @(R0,R13),R9
+        ]
+        for nested_load in nested_loads:
+            stop = min(len(data) - 6, nested_load + 0x180)
+            for word_load in range(nested_load + 2, stop, 2):
+                if be16(data, word_load) != 0x6291:  # MOV.W @R9,R2
+                    continue
+                if (
+                    be16(data, word_load + 2) != 0xE03C  # MOV #60,R0
+                    or be16(data, word_load + 4) != 0x0F25  # MOV.W R2,@(R0,SP)
+                ):
+                    continue
+                store_position = word_load + 4
+
+                read_stop = min(len(data) - 20, store_position + 0x500)
+                for stack_read in range(store_position + 2, read_stop, 2):
+                    if not (
+                        be16(data, stack_read) == 0xE03C
+                        and be16(data, stack_read + 2) == 0x6382
+                        and be16(data, stack_read + 4) == 0x02FD  # MOV.W @(R0,SP),R2
+                    ):
+                        continue
+                    index_literal_load = stack_read + 6
+                    index_op = be16(data, index_literal_load)
+                    index_literal = mov_w_pc_target(
+                        index_literal_load, index_op, len(data)
+                    )
+                    if (
+                        index_literal is None
+                        or be16(data, index_literal) != 0x0009
+                        or be16(data, stack_read + 8) != 0x622D  # MOV.W @(R0,R2),R2
+                        or be16(data, stack_read + 10) != 0x01DE  # MOV.L @(R0,R13),R1
+                        or be16(data, stack_read + 12) != 0x4208  # SHLL2 R2
+                        or be16(data, stack_read + 14) != 0x4200  # SHLL R2
+                        or be16(data, stack_read + 16) != 0x321C  # ADD R1,R2
+                        or be16(data, stack_read + 18) != 0x2322  # MOV.L R3,@R2
+                    ):
+                        continue
+                    candidates.add((offset_load, nested_load, store_position, stack_read))
+    return [
+        {
+            "nested_pointer_field_0xB0": True,
+            "stack_slot_SP_plus_60": True,
+            "descriptor_slot_base_field_plus_9": True,
+            "index_scale_8": True,
+        }
+        for _ in candidates
+    ]
+
+
 def summarize(data: bytes) -> dict:
     producer_entries = find_producer_entries(data)
     producer_calls: list[tuple[int, int]] = []
@@ -223,6 +290,7 @@ def summarize(data: bytes) -> dict:
         for entry in producer_entries
         for guard in find_global_field98_guards(data, entry)
     ]
+    stack60_chains = find_stack60_descriptor_slot_candidates(data)
 
     return {
         "descriptor_writer_guard_candidates": len(writer_guard_positions(data)),
@@ -242,6 +310,11 @@ def summarize(data: bytes) -> dict:
         "field_equality_branches_skipping_producer_call": sum(
             item["branch_skips_producer_call_when_field_matches"]
             for item in field_guards
+        ),
+        "stack_SP_plus_60_nested_pointer_to_descriptor_slot_candidates": len(stack60_chains),
+        "descriptor_slot_address_uses_R13_plus_9_and_index_times_8": sum(
+            item["descriptor_slot_base_field_plus_9"] and item["index_scale_8"]
+            for item in stack60_chains
         ),
         "interpretation": (
             "The descriptor-writer candidate belongs to a function reached by four "
