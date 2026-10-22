@@ -184,7 +184,7 @@ def _producer_initialization_audit(data: bytes) -> dict:
     ]
     producer_calls = [
         pos for pos, reg in producer_refs
-        if reg == 3 and be16(data, pos + 2) == 0x430B
+        if reg == 1 and be16(data, pos + 2) == 0x410B
     ]
     init_literal = movl_literal(data, INITIALIZER_ENTRY + 0x06)
     initializer_resets_count = (
