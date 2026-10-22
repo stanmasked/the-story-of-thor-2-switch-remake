@@ -1,29 +1,88 @@
 # Stage63 Nintendo Switch NRO build for the synthetic gameplay sandbox.
-# Requires devkitPro/devkitA64/libnx. Does not package the Saturn ISO or assets.
+# Requires devkitPro/devkitA64/libnx. Never packages original Saturn assets.
 .SUFFIXES:
+
 ifeq ($(strip $(DEVKITPRO)),)
 $(error "Please set DEVKITPRO to your devkitPro installation")
 endif
+
 TOPDIR ?= $(CURDIR)
 include $(DEVKITPRO)/libnx/switch_rules
 
-TARGET := thor2-stage63
-APP_TITLE := Thor2 Native Sandbox
-APP_AUTHOR := RIKITU LAB
-APP_VERSION := 0.1.0
-NO_ICON := 1
-BUILD := build-switch
-SOURCES := native/platform
-INCLUDES := native
+TARGET       := thor2-stage63
+BUILD        := build-switch
+SOURCES      := native/platform
+DATA         :=
+INCLUDES     := native
+APP_TITLE    := Thor2 Native Sandbox
+APP_AUTHOR   := RIKITU LAB
+APP_VERSION  := 0.1.0
+NO_ICON      := 1
 
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
-LIBDIRS := $(PORTLIBS) $(LIBNX)
-INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-           $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-           -I$(CURDIR)/$(BUILD)
-
-CFLAGS := -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections $(ARCH) $(INCLUDE) -D__SWITCH__
+CFLAGS := -g -Wall -Wextra -Werror -O2 -ffunction-sections -fdata-sections \
+          $(ARCH) $(DEFINES)
+CFLAGS += -D__SWITCH__
 CXXFLAGS := $(CFLAGS) -std=gnu++17 -fexceptions
 ASFLAGS := -g $(ARCH)
-LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) \
+          -Wl,-Map,$(notdir $*.map)
 LIBS := -lnx -lstdc++ -lm
+LIBDIRS := $(PORTLIBS) $(LIBNX)
+
+# The official libnx make pattern uses an outer make for source discovery and
+# an inner make in BUILD for object compilation and NRO/NACP generation.
+ifneq ($(BUILD),$(notdir $(CURDIR)))
+
+export OUTPUT  := $(CURDIR)/$(TARGET)
+export TOPDIR  := $(CURDIR)
+export VPATH   := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
+                  $(foreach dir,$(DATA),$(CURDIR)/$(dir))
+export DEPSDIR := $(CURDIR)/$(BUILD)
+
+CFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+SFILES   := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+BINFILES := $(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+
+ifeq ($(strip $(CPPFILES)),)
+export LD := $(CC)
+else
+export LD := $(CXX)
+endif
+
+export OFILES_BIN := $(addsuffix .o,$(BINFILES))
+export OFILES_SRC := $(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
+export OFILES     := $(OFILES_BIN) $(OFILES_SRC)
+export HFILES_BIN := $(addsuffix .h,$(subst .,_,$(BINFILES)))
+
+export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+                  $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+                  -I$(CURDIR)/$(BUILD)
+export LIBPATHS := $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+
+.PHONY: all clean $(BUILD)
+all: $(BUILD)
+
+$(BUILD):
+	@[ -d $@ ] || mkdir -p $@
+	@$(MAKE) --no-print-directory -C $@ -f $(CURDIR)/Makefile.switch
+
+clean:
+	@echo "clean ..."
+	@rm -rf $(BUILD) $(TARGET).nro $(TARGET).nacp $(TARGET).elf
+
+else
+
+.PHONY: all
+DEPENDS := $(OFILES:.o=.d)
+
+all: $(OUTPUT).nro
+
+$(OUTPUT).nro: $(OUTPUT).elf $(OUTPUT).nacp
+$(OUTPUT).elf: $(OFILES)
+$(OFILES_SRC): $(HFILES_BIN)
+
+-include $(DEPENDS)
+
+endif
