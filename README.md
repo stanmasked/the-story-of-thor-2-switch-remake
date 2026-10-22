@@ -69,6 +69,7 @@ Python 3.11+ and only the standard library:
     python tools/stage74_scu_dma_handler_audit.py "/private/The Story of Thor 2.iso" -o /private/stage74_redacted.json
     python tools/stage75_indirect_services_count_provenance.py "/private/The Story of Thor 2.iso" -o /private/stage75_redacted.json
     python tools/stage76_length_field_feedback_cfg.py "/private/The Story of Thor 2.iso" -o /private/stage76_redacted.json
+    python tools/stage77_callee_register_preservation.py "/private/The Story of Thor 2.iso" -o /private/stage77_redacted.json
 
 Analysis tools report structural metadata and aggregate statistics only unless their documentation says otherwise. Stage 70–72 deliberately redact status/global addresses and executable offsets. Stage 08 intentionally writes a local candidate PNG under explicit pixel-format/dimension assumptions; do not commit or publish previews.
 
