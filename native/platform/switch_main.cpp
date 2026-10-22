@@ -8,6 +8,7 @@
 #include "software_renderer.hpp"
 #include "platform/input_mapping.hpp"
 #include "platform/fixed_step_clock.hpp"
+#include "platform/input_accumulator.hpp"
 #include "platform/framebuffer_presenter.hpp"
 
 namespace {
@@ -50,7 +51,7 @@ int main(int, char**) {
         return 3;
     }
     clock.reset(armGetSystemTick());
-    bool restart_pending = false;
+    thor2::platform::InputAccumulator input_accumulator;
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -60,16 +61,11 @@ int main(int, char**) {
         if (mapped.quit)
             break;
 
-        // The simulation advances at 60 Hz regardless of render-loop cadence.
-        // Preserve edge-triggered restart if a render frame has no simulation tick.
-        restart_pending = restart_pending || mapped.gameplay.restart;
+        // Retain edge-triggered actions if sampling occurs between fixed ticks.
+        input_accumulator.sample(mapped.gameplay);
         const std::uint32_t steps = clock.advance(armGetSystemTick());
-        for (std::uint32_t i = 0; i < steps; ++i) {
-            auto input = mapped.gameplay;
-            input.restart = restart_pending;
-            game.tick(input);
-            restart_pending = false;
-        }
+        for (std::uint32_t i = 0; i < steps; ++i)
+            game.tick(input_accumulator.consume_tick());
         thor2::sandbox::render(game, surface);
 
         u32 stride_bytes = 0;
