@@ -116,7 +116,16 @@ def _summarize_set07_entry(set07: bytes, buffer_base: int) -> dict:
     zero_loop = _branch(0x18, _be16(set07, 0x18))
     copy_loop = _branch(0x30, _be16(set07, 0x30))
     bounded_byte_loops = bool(
-        zero_loop and zero_loop[0] == "BF" and zero_loop[1] == 0x0C
+        _be16(set07, 0x0C) == 0xE200
+        and _be16(set07, 0x0E) == 0x2420
+        and _be16(set07, 0x10) == 0x7401
+        and _be16(set07, 0x16) == 0x3432
+        and zero_loop and zero_loop[0] == "BF" and zero_loop[1] == 0x0C
+        and _be16(set07, 0x24) == 0x6250
+        and _be16(set07, 0x26) == 0x2420
+        and _be16(set07, 0x28) == 0x7401
+        and _be16(set07, 0x2A) == 0x7501
+        and _be16(set07, 0x2E) == 0x3432
         and copy_loop and copy_loop[0] == "BF" and copy_loop[1] == 0x24
     )
     pre_poll_call = (
@@ -131,6 +140,8 @@ def _summarize_set07_entry(set07: bytes, buffer_base: int) -> dict:
         and _be16(set07, 0x154) == 0x0009
         and _be16(set07, 0x156) == 0x600D
         and _be16(set07, 0x158) == 0x20A8
+        and poll_load is not None and poll_load[2] == 12
+        and _be16(set07, 0xF2) == 0x4C0B and _be16(set07, 0xF4) == 0x0009
         and poll_branch is not None and poll_branch[0] == "BT"
         and poll_branch[1] == 0x152
     )
@@ -147,7 +158,7 @@ def _summarize_set07_entry(set07: bytes, buffer_base: int) -> dict:
         "startup_calls_internal_helper_before_mask_poll": pre_poll_call,
         "startup_polls_until_return_value_has_mask_0x40": mask_poll,
         "mask_poll_target_is_inside_module": poll_target_inside,
-        "callback_registration_confirmed": False,
+        "callback_registration_proven_by_mask_poll_signature": False,
     }
 
 
