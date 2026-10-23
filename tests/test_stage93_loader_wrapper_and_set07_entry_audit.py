@@ -119,11 +119,11 @@ class Stage93LoaderWrapperAndEntryTests(unittest.TestCase):
         self.assertTrue(result["first_internal_helper_call_found"])
         self.assertTrue(result["second_internal_helper_call_found"])
         self.assertTrue(result["first_negative_path_uses_error_code_1"])
-        self.assertTrue(result["first_error_path_rejoins_second_helper"])
+        self.assertTrue(result["first_error_call_return_address_targets_second_helper_setup"])
         self.assertTrue(result["second_negative_path_uses_error_code_2"])
-        self.assertTrue(result["second_error_path_rejoins_return"])
+        self.assertTrue(result["second_error_call_return_address_targets_wrapper_return"])
         self.assertTrue(result["wrapper_returns_second_helper_result"])
-        self.assertFalse(result["wrapper_short_circuits_after_first_negative_result"])
+        self.assertTrue(result["local_path_after_first_error_call_has_no_early_return_if_callee_returns"])
 
     def test_wrapper_rejects_wrong_first_error_code(self):
         data, entry = loader_wrapper_fixture()
