@@ -106,6 +106,7 @@ class Stage96DispatchSlotWriterAliasTests(unittest.TestCase):
         put16(first, 0x12, 0x2122)
         result = summarize_payloads({"A.BIN": bytes(first), "B.BIN": bytes(second)})
         self.assertEqual(result["root_modules_scanned"], 2)
+        self.assertEqual(result["per_module"]["B.BIN"]["generic_stack_prologue_candidate_count"], 0)
         self.assertEqual(result["bounded_exact_target_store_candidate_count"], 1)
         self.assertEqual(result["store_candidates_by_root_module"], {"A.BIN": 1})
         self.assertFalse(result["all_store_writers_resolved"])
