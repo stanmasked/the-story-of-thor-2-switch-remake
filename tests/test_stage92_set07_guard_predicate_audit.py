@@ -152,7 +152,7 @@ class Stage92Set07GuardPredicateTests(unittest.TestCase):
         put16(data, 0x22, 0x880F)
         put16(data, 0x24, branch(0x8B00, 0x24, continuation))
         cfg = _delay_aware_cfg(bytes(data), 0x10, len(data))
-        self.assertFalse(_r14_delay_slot_dominates_r4_guard(bytes(data), cfg, 0x10, name_pos, continuation))
+        self.assertFalse(_r14_indirect_word_load_dominates_r4_guard(bytes(data), cfg, 0x10, name_pos, continuation))
 
     def test_adjacent_global_words_are_traced_through_local_snapshot_slots(self):
         data = bytearray(0x180)
