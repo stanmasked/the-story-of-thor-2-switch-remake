@@ -130,7 +130,7 @@ def _scan_from_literal(
             src = (opcode >> 4) & 0xF
             if src in regs:
                 regs[dst] = regs[src]
-                adjusted[dst] = adjusted.get(src, False) or src != pointer_reg or regs[src] != target
+                adjusted[dst] = adjusted.get(src, False) or dst != pointer_reg or regs[src] != target
             elif dst in regs:
                 del regs[dst]
                 adjusted.pop(dst, None)
