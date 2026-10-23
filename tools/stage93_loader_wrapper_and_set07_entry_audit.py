@@ -82,13 +82,13 @@ def _summarize_loader_wrapper(data: bytes, entry: int, code_load_address: int = 
         "both_helpers_have_internal_targets": helper_a_valid and helper_b_valid,
         "first_result_checked_for_nonnegative_value": first_check,
         "first_negative_path_uses_error_code_1": first_check,
-        "first_error_path_rejoins_second_helper": first_check and _be16(data, entry + 0x18) == 0x66F2,
+        "first_error_call_return_address_targets_second_helper_setup": first_check and _be16(data, entry + 0x18) == 0x66F2,
         "second_result_checked_for_nonnegative_value": second_check,
         "second_negative_path_uses_error_code_2": second_check,
-        "second_error_path_rejoins_return": second_check and wrapper_return,
+        "second_error_call_return_address_targets_wrapper_return": second_check and wrapper_return,
         "wrapper_returns_second_helper_result": second_check and wrapper_return,
         "error_paths_share_one_helper_target": shared_error_target,
-        "wrapper_short_circuits_after_first_negative_result": False if first_check else None,
+        "local_path_after_first_error_call_has_no_early_return_if_callee_returns": True if first_check else None,
     }
 
 
