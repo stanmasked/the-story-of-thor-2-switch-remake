@@ -74,7 +74,7 @@ def _scan_from_literal(
 ) -> tuple[dict[int, tuple[str, bool]], set[int]]:
     """Scan one bounded linear path; return store sites and unresolved indexed sites."""
     regs: dict[int, int] = {pointer_reg: literal_value}
-    adjusted: dict[int, bool] = {pointer_reg: False}
+    adjusted: dict[int, bool] = {pointer_reg: literal_value != target}
     stores: dict[int, tuple[str, bool]] = {}
     indexed_unknown: set[int] = set()
     stop = min(len(data) - 1, start + window * 2)
@@ -111,7 +111,7 @@ def _scan_from_literal(
         literal = movl_literal(data, pos)
         if literal is not None:
             regs[literal[2]] = literal[1]
-            adjusted[literal[2]] = literal[1] != target
+            adjusted[literal[2]] = literal[2] != pointer_reg or literal[1] != target
             pos += 2
             continue
 
@@ -130,7 +130,7 @@ def _scan_from_literal(
             src = (opcode >> 4) & 0xF
             if src in regs:
                 regs[dst] = regs[src]
-                adjusted[dst] = adjusted.get(src, False) or regs[src] != target
+                adjusted[dst] = adjusted.get(src, False) or src != pointer_reg or regs[src] != target
             elif dst in regs:
                 del regs[dst]
                 adjusted.pop(dst, None)
