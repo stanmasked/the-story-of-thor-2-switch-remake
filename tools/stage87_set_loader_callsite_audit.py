@@ -131,7 +131,7 @@ def _find_main_name_loader_targets(data: bytes, name: bytes) -> tuple[dict, list
     for string_pos in occurrences:
         address = CODE_LOAD_ADDRESS + string_pos
         for pos, reg in _literal_references_to(data, address):
-            if reg != 4 or pos + 8 > len(data):
+            if reg != 4 or pos + 14 > len(data):
                 continue
             # Observed generic filename-load call: R4=name pointer, R3=callee,
             # JSR @R3 and NOP delay slot.
@@ -186,6 +186,9 @@ def summarize_low_set07(
             "set07_call_target_matches_main_loader": False,
             "set07_destination_argument_candidates": 0,
             "set07_loader_call_candidate_found": False,
+            "set07_entry_call_candidates": 0,
+            "entry_call_target_matches_destination_argument": False,
+            "overlay_entry_callsite_found": False,
             "direct_code_xref_status": "name_not_found",
             "overlay_execution_confirmed": False,
         }
@@ -211,8 +214,10 @@ def summarize_low_set07(
     loader_calls = 0
     matching_loader_calls = 0
     destination_candidates = []
+    entry_call_candidates = 0
+    entry_target_matches_destination = 0
     for pos, reg in xrefs:
-        if reg != 4 or pos + 8 > len(data):
+        if reg != 4 or pos + 14 > len(data):
             continue
         callee_load = movl_literal(data, pos + 2)
         if (
@@ -223,10 +228,27 @@ def summarize_low_set07(
         ):
             continue
         loader_calls += 1
-        matching_loader_calls += int(callee_load[1] in known_loader_targets)
+        target_matches = callee_load[1] in known_loader_targets
+        matching_loader_calls += int(target_matches)
         destination_load = movl_literal(data, pos - 2)
         if destination_load is not None and destination_load[2] == 5:
             destination_candidates.append(destination_load[1])
+        # Immediately after the loader call and its NOP delay slot, the code
+        # reloads the same destination into R3 and calls it as an entrypoint.
+        entry_load = movl_literal(data, pos + 8)
+        entry_call_is_static = (
+            target_matches
+            and destination_load is not None
+            and destination_load[2] == 5
+            and entry_load is not None
+            and entry_load[2] == 3
+            and entry_load[1] == destination_load[1]
+            and int.from_bytes(data[pos + 10:pos + 12], "big") == 0x430B
+            and int.from_bytes(data[pos + 12:pos + 14], "big") == 0x0009
+        )
+        if entry_call_is_static:
+            entry_call_candidates += 1
+            entry_target_matches_destination += 1
 
     consistent = candidate_load_base is not None and bool(xrefs)
     return {
@@ -241,7 +263,12 @@ def summarize_low_set07(
         "set07_call_target_matches_main_loader": matching_loader_calls > 0,
         "set07_destination_argument_candidates": len(destination_candidates),
         "set07_loader_call_candidate_found": matching_loader_calls > 0,
+        "set07_entry_call_candidates": entry_call_candidates,
+        "entry_call_target_matches_destination_argument": entry_target_matches_destination > 0,
+        "overlay_entry_callsite_found": entry_call_candidates > 0,
         "direct_code_xref_status": (
+            "loader_call_followed_by_entry_call_to_same_buffer"
+            if entry_call_candidates else
             "literal_backed_loader_call_matches_main_target"
             if matching_loader_calls else
             "literal_backed_reference_matches_candidate_load_base"
@@ -300,6 +327,7 @@ def analyze(image: Path) -> dict:
             "same_loader_target_used_for_th2_low_and_set_table": common_loader,
             "loader_target_comparison_possible": bool(set_targets and low_load_targets),
             "low_set07_loader": low_summary,
+            "set07_static_overlay_entry_callsite_found": low_summary["overlay_entry_callsite_found"],
             "set07_runtime_role_confirmed": False,
             "runtime_pointer_registration_proven": False,
             "runtime_callback_execution_confirmed": False,
