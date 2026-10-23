@@ -1,0 +1,34 @@
+name: Stage 106 public analysis source bundle
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage106-source-bundle.yml'
+      - 'tools/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-analysis-sources:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bundle contains only public Python analysis sources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          paths = sorted(Path('tools').glob('*.py'))
+          assert paths
+          with ZipFile('/tmp/thor2-public-analysis-sources.zip', 'w', ZIP_DEFLATED) as bundle:
+              for path in paths:
+                  assert path.is_file() and not path.is_symlink()
+                  bundle.write(path, arcname=str(path))
+          print(f'Bundled {len(paths)} public Python source files; no private assets.')
+          PY
+      - name: Upload temporary public-source-only bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage106-public-analysis-sources
+          path: /tmp/thor2-public-analysis-sources.zip
+          retention-days: 1
+          if-no-files-found: error
