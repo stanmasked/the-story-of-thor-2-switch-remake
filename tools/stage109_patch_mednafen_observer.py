@@ -113,7 +113,13 @@ def patch(text: str) -> str:
     if(stage109_observer.enabled) stage109_observer.Record(CPU[0],"pre");
     ''' + ANCHOR + '''
     if(stage109_observer.enabled) stage109_observer.Record(CPU[0],"post");'''
-    return GLOBAL_HEADERS + text.replace(ANCHOR, replacement, 1)
+    core = '#include <mednafen/mednafen.h>\n'
+    if text.count(core) != 1:
+        raise ValueError('unsupported_source_version: mednafen_core_include')
+    # Mednafen types.h requires mednafen.h to have initialized core typedefs.
+    # Standard C++ includes must also remain OUTSIDE MDFN_IEN_SS namespace.
+    text = text.replace(core, core + GLOBAL_HEADERS, 1)
+    return text.replace(ANCHOR, replacement, 1)
 
 
 def main() -> None:
