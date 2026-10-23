@@ -186,7 +186,7 @@ Analysis tools report structural metadata and aggregate statistics only unless t
 
 - **Stage 83:** maps seven callback ID 64 sites without an immediate writer predecessor to candidate function intervals. Three are delay-slot length copies in intervals with no direct writer call; four are NOP-delay calls in `TH2.LOW`, one sharing an interval with a later writer callsite and three with no writer. This is a prologue-based context heuristic, not a full CFG or runtime proof. See docs/STAGE83_REPORT_RU.md.
 
-- **Stage 84:** a direct CFG walk recorded 722 states, but CI exposed a result-semantics bug: the prior flag meant writer was seen on all callback paths, not whether any path saw writer first. The earlier call-order conclusion is withdrawn pending rerun with corrected any-path/all-path fields. All 38 raw service-slot-A byte matches are odd-offset, unaligned and absent from PC-relative literal pools, so they are not evidence of a pointer table. See docs/STAGE84_REPORT_RU.md.
+- **Stage 84:** after fixing the any-path/all-path flag semantics, the private-ISO CFG was rerun: 722 states were visited and callback was reached only with `writer_seen=false`. The writer was reachable after the callback and on a separate path without the callback; no direct writer→callback path appeared in this bounded CFG. External initialization, alternate entries and computed dispatch remain unproven. All 38 raw service-slot-A byte matches are odd-offset, unaligned and absent from PC-relative literal pools, so they are not evidence of a pointer table. See docs/STAGE84_REPORT_RU.md.
 
 Stages 10–66 use synthetic-only GitHub CI; original assets stay private. Original Saturn material is never uploaded.
 
