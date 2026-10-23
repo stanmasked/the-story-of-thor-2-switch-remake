@@ -162,11 +162,17 @@ class Stage87SetLoaderCallsiteTests(unittest.TestCase):
         put_literal_load(data, 0x32, 2, 0x104, loader_target)
         put16(data, 0x34, 0x420B)
         put16(data, 0x36, 0x0009)
+        put_literal_load(data, 0x38, 3, 0x108, 0x060D8000)
+        put16(data, 0x3A, 0x430B)
+        put16(data, 0x3C, 0x0009)
         result = summarize_low_set07(bytes(data), candidate_base, {loader_target})
         self.assertEqual(result["set07_loader_call_candidates"], 1)
         self.assertTrue(result["set07_call_target_matches_main_loader"])
         self.assertEqual(result["set07_destination_argument_candidates"], 1)
         self.assertTrue(result["set07_loader_call_candidate_found"])
+        self.assertEqual(result["set07_entry_call_candidates"], 1)
+        self.assertTrue(result["entry_call_target_matches_destination_argument"])
+        self.assertTrue(result["overlay_entry_callsite_found"])
         self.assertFalse(result["overlay_execution_confirmed"])
 
     def test_output_schema_never_contains_offsets_or_addresses(self):
