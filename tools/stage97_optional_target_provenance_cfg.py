@@ -139,6 +139,17 @@ def _summarize_target_sites(
 
         module["reachable_indirect_use_candidate_count"] = len(reachable_call_sites)
         module["generic_stack_prologue_candidate_count"] = len(prologues)
+        for key in (
+            "raw_literal_reference_candidate_count",
+            "reference_sites_without_prologue_window",
+            "reference_sites_in_prologue_windows",
+            "reachable_reference_sites",
+            "reference_sites_reachable_only_as_delay_slots",
+            "reference_sites_in_window_but_unreachable",
+            "reachable_indirect_call_candidate_count",
+            "reachable_indirect_tail_jump_candidate_count",
+        ):
+            module.setdefault(key, 0)
         per_module[name] = dict(module)
         totals.update(module)
         if reachable_call_sites:
