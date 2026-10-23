@@ -61,6 +61,12 @@ def _slot_call_pattern_sites(
             opcode = _be16(data, cursor)
             branch = _branch(cursor, opcode)
             if branch is not None:
+                if (
+                    target_register is not None
+                    and branch[0] == "JSR"
+                    and ((opcode >> 8) & 0xF) == target_register
+                ):
+                    call_sites.append(cursor)
                 break
             if target_register is None:
                 # MOV.L @Rn,Rm
