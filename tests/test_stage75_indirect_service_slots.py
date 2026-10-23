@@ -10,7 +10,7 @@ def fixture(with_store=True):
     data = bytearray(128)
     data[0:2] = (0xD108).to_bytes(2, "big")  # MOV.L @(8,PC),R1; literal at 36
     data[36:40] = SERVICE_SLOTS[0].to_bytes(4, "big")
-    data[2:4] = (0x2212 if with_store else 0x0009).to_bytes(2, "big")
+    data[2:4] = (0x2122 if with_store else 0x0009).to_bytes(2, "big")
     return bytes(data)
 
 
@@ -32,7 +32,7 @@ class Stage75SlotTests(unittest.TestCase):
     def test_control_transfer_breaks_scan(self):
         data = bytearray(fixture())
         data[2:4] = (0xA000).to_bytes(2, "big")
-        data[4:6] = (0x2212).to_bytes(2, "big")
+        data[4:6] = (0x2122).to_bytes(2, "big")
         self.assertEqual(scan_slot_writes(bytes(data), SERVICE_SLOTS[0])["bounded_direct_longword_store_candidates"], 0)
 
     def test_output_contains_no_private_addresses(self):
