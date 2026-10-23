@@ -168,7 +168,11 @@ def summarize_main_th2_low_load(data: bytes) -> dict:
     return _find_main_name_loader_targets(data, b"TH2.LOW")[0]
 
 
-def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> dict:
+def summarize_low_set07(
+    data: bytes,
+    candidate_load_base: int | None = None,
+    known_loader_targets: set[int] | None = None,
+) -> dict:
     set07 = _all_occurrences(data, b"SET07.BIN")
     if not set07:
         return {
@@ -178,6 +182,10 @@ def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> 
             "candidate_load_base_available": candidate_load_base is not None,
             "set07_literal_backed_xref_count": 0,
             "candidate_base_self_reference_consistent": False,
+            "set07_loader_call_candidates": 0,
+            "set07_call_target_matches_main_loader": False,
+            "set07_destination_argument_candidates": 0,
+            "set07_loader_call_candidate_found": False,
             "direct_code_xref_status": "name_not_found",
             "overlay_execution_confirmed": False,
         }
@@ -198,6 +206,28 @@ def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> 
                 if _literal_references_to(data, candidate_load_base + pos):
                     referenced_resource_kinds += 1
                     break
+
+    known_loader_targets = known_loader_targets or set()
+    loader_calls = 0
+    matching_loader_calls = 0
+    destination_candidates = []
+    for pos, reg in xrefs:
+        if reg != 4 or pos + 8 > len(data):
+            continue
+        callee_load = movl_literal(data, pos + 2)
+        if (
+            callee_load is None
+            or callee_load[2] != 2
+            or int.from_bytes(data[pos + 4:pos + 6], "big") != 0x420B
+            or int.from_bytes(data[pos + 6:pos + 8], "big") != 0x0009
+        ):
+            continue
+        loader_calls += 1
+        matching_loader_calls += int(callee_load[1] in known_loader_targets)
+        destination_load = movl_literal(data, pos - 2)
+        if destination_load is not None and destination_load[2] == 5:
+            destination_candidates.append(destination_load[1])
+
     consistent = candidate_load_base is not None and bool(xrefs)
     return {
         "set07_name_occurrences": len(set07),
@@ -207,7 +237,13 @@ def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> 
         "set07_literal_backed_xref_count": len(xrefs),
         "candidate_base_literal_backed_resource_name_kinds": referenced_resource_kinds,
         "candidate_base_self_reference_consistent": consistent,
+        "set07_loader_call_candidates": loader_calls,
+        "set07_call_target_matches_main_loader": matching_loader_calls > 0,
+        "set07_destination_argument_candidates": len(destination_candidates),
+        "set07_loader_call_candidate_found": matching_loader_calls > 0,
         "direct_code_xref_status": (
+            "literal_backed_loader_call_matches_main_target"
+            if matching_loader_calls else
             "literal_backed_reference_matches_candidate_load_base"
             if consistent else
             "unresolved_without_candidate_load_base"
@@ -216,7 +252,6 @@ def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> 
         ),
         "overlay_execution_confirmed": False,
     }
-
 
 def analyze(image: Path) -> dict:
     root = read_root_payloads(image, max_file_size=MAX_FILE_SIZE)
@@ -250,7 +285,8 @@ def analyze(image: Path) -> dict:
     candidate_load_base = (
         destination_candidates[0] if len(set(destination_candidates)) == 1 else None
     )
-    low_summary = summarize_low_set07(low, candidate_load_base)
+    known_loader_targets = set(set_targets).union(low_load_targets)
+    low_summary = summarize_low_set07(low, candidate_load_base, known_loader_targets)
     common_loader = bool(set(set_targets).intersection(low_load_targets))
     return {
         "schema_version": 1,
