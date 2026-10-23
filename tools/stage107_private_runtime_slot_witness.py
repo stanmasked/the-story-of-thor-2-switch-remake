@@ -155,7 +155,7 @@ def audit(manifest_path: Path, trace_a_path: Path, trace_b_path: Path) -> dict:
         "stage": "stage107_private_runtime_slot_witness",
         "analysis": {
             "provided_capture_pair_hashes_verified": True,
-            "independent_session_ids_and_nonidentical_captures": True,
+            "distinct_session_ids_and_capture_hashes": True,
             "claimed_external_bios_hash_matches_known_reference": True,
             "same_slot_and_target_in_both_supplied_captures": True,
             "r13_preserved_in_supplied_call_return_events": True,
