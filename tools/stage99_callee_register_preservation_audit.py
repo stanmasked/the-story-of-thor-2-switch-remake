@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter, deque
+from collections import deque
 from pathlib import Path
 
 from stage35_table_tail_link import movl_literal
@@ -27,7 +27,6 @@ from stage93_loader_wrapper_and_set07_entry_audit import _summarize_loader_wrapp
 from stage94_error_helper_return_audit import _summarize_error_helper
 from stage97_optional_target_provenance_cfg import _find_error_helper_entry_window
 from stage98_control_byte_writer_audit import (
-    _caller_entry_anchors,
     _scan_control_byte_writers,
     _site_reachability,
     _source_register_seed_summary,
@@ -350,12 +349,12 @@ def analyze(image: Path) -> dict:
         target_value = call["target_value"]
         if target_kind == "literal" and target_value is not None and CODE_LOAD_ADDRESS <= target_value < CODE_LOAD_ADDRESS + len(main):
             target_entry = target_value - CODE_LOAD_ADDRESS
-            preserves = _callee_r13_preservation(main, target_entry)
             if target_value == next(iter(set(_find_set_table_loader_targets(main)[1]).intersection(_find_main_th2_low_load(main)[1])), None):
                 role = "loader_wrapper"
                 preserves = None
             else:
                 role = "in_image_callee"
+                preserves = _callee_r13_preservation(main, target_entry)
             if preserves is None and role != "loader_wrapper":
                 end = _function_end(main, target_entry)
                 cfg = _delay_aware_cfg(main, target_entry, end)
