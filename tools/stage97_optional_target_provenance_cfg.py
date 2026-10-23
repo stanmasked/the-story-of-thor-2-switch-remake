@@ -15,15 +15,18 @@ from collections import Counter
 from pathlib import Path
 
 from stage35_table_tail_link import movl_literal
+from stage71_callback_dispatch_chain import CODE_LOAD_ADDRESS
 from stage85_disc_slot_writer_census import MAX_FILE_SIZE
 from stage86_set_module_signature_audit import read_root_payloads
 from stage91_set07_overlay_entry_guard_audit import (
     _be16,
     _branch,
     _find_main_th2_low_load,
+    _find_set_table_loader_targets,
     _generic_prologues,
 )
 from stage92_set07_guard_predicate_audit import _delay_aware_cfg
+from stage93_loader_wrapper_and_set07_entry_audit import _summarize_loader_wrapper
 from stage95_dispatch_slot_cross_module_audit import OPTIONAL_TARGETS
 
 MAX_FUNCTION_WINDOW = 0x400
@@ -97,8 +100,41 @@ def _target_use_after_literal(
     return None
 
 
+def _find_error_helper_entry_window(main: bytes) -> tuple[int, int] | None:
+    """Use the known loader-wrapper callsite as an explicit entry anchor.
+
+    The error helper does not necessarily match the generic stack-prologue
+    signature, so its entry is derived from the wrapper's shared negative paths.
+    """
+    if not main:
+        return None
+    _, table_targets = _find_set_table_loader_targets(main)
+    _, low_targets, _ = _find_main_th2_low_load(main)
+    common_targets = set(table_targets).intersection(low_targets)
+    if len(common_targets) != 1:
+        return None
+    wrapper_entry = next(iter(common_targets)) - CODE_LOAD_ADDRESS
+    wrapper = _summarize_loader_wrapper(main, wrapper_entry)
+    if not (
+        wrapper.get("wrapper_signature_found", False)
+        and wrapper.get("error_paths_share_one_helper_target", False)
+    ):
+        return None
+    error_call = _branch(wrapper_entry + 0x14, _be16(main, wrapper_entry + 0x14))
+    if error_call is None or error_call[0] != "BSR" or error_call[1] is None:
+        return None
+    helper_entry = error_call[1]
+    # Stage94's recognized helper layout ends executable instructions at +0x2C,
+    # where its pointer pool begins. Do not treat that pool as code.
+    helper_end = helper_entry + 0x2C
+    if helper_entry < 0 or helper_end > len(main):
+        return None
+    return helper_entry, helper_end
+
+
 def _summarize_target_sites(
-    payloads: dict[str, bytes], target: int
+    payloads: dict[str, bytes], target: int,
+    entry_anchors: dict[str, list[tuple[int, int]]] | None = None,
 ) -> dict:
     per_module: dict[str, dict] = {}
     totals = Counter()
@@ -114,11 +150,20 @@ def _summarize_target_sites(
 
         for site, register in sites:
             module["raw_literal_reference_candidate_count"] += 1
-            window = _function_window(len(data), site, prologues)
-            if window is None:
-                module["reference_sites_without_prologue_window"] += 1
-                continue
-            module["reference_sites_in_prologue_windows"] += 1
+            anchored_window = next(
+                (window for window in (entry_anchors or {}).get(name, [])
+                 if window[0] <= site < window[1]),
+                None,
+            )
+            if anchored_window is not None:
+                window = anchored_window
+                module["reference_sites_in_explicit_entry_anchor_windows"] += 1
+            else:
+                window = _function_window(len(data), site, prologues)
+                if window is None:
+                    module["reference_sites_without_prologue_window"] += 1
+                    continue
+                module["reference_sites_in_prologue_windows"] += 1
             if window not in cfg_cache:
                 cfg_cache[window] = _delay_aware_cfg(data, window[0], window[1])
             cfg = cfg_cache[window]
@@ -143,6 +188,7 @@ def _summarize_target_sites(
             "raw_literal_reference_candidate_count",
             "reference_sites_without_prologue_window",
             "reference_sites_in_prologue_windows",
+            "reference_sites_in_explicit_entry_anchor_windows",
             "reachable_reference_sites",
             "reference_sites_reachable_only_as_delay_slots",
             "reference_sites_in_window_but_unreachable",
@@ -162,6 +208,11 @@ def _summarize_target_sites(
             item["raw_literal_reference_candidate_count"] > 0 for item in per_module.values()
         ),
         "reference_sites_in_prologue_windows": totals["reference_sites_in_prologue_windows"],
+        "reference_sites_in_explicit_entry_anchor_windows": totals["reference_sites_in_explicit_entry_anchor_windows"],
+        "reference_sites_in_analyzed_windows": (
+            totals["reference_sites_in_prologue_windows"]
+            + totals["reference_sites_in_explicit_entry_anchor_windows"]
+        ),
         "reachable_reference_sites": totals["reachable_reference_sites"],
         "reference_sites_reachable_only_as_delay_slots": totals["reference_sites_reachable_only_as_delay_slots"],
         "reference_sites_in_window_but_unreachable": totals["reference_sites_in_window_but_unreachable"],
@@ -245,8 +296,10 @@ def analyze(image: Path) -> dict:
     main = payloads.get("0TH2.BIN", b"")
     low = payloads.get("TH2.LOW", b"")
     mapping = _summarize_th2_low_mapping(main, low)
+    error_helper_window = _find_error_helper_entry_window(main)
+    entry_anchors = {"0TH2.BIN": [error_helper_window]} if error_helper_window else {}
     target_summaries = {
-        str(index): _summarize_target_sites(payloads, target)
+        str(index): _summarize_target_sites(payloads, target, entry_anchors)
         for index, target in enumerate(OPTIONAL_TARGETS, 1)
     }
     return {
@@ -257,6 +310,7 @@ def analyze(image: Path) -> dict:
             "full_payloads_scanned": root.get("full_payloads_scanned", len(payloads)),
             "large_files_skipped_from_code_scan": root.get("large_files_skipped_from_code_scan", 0),
             "th2_low_mapping_consistency": mapping,
+            "recognized_error_helper_entry_anchor_found": error_helper_window is not None,
             "optional_target_reference_audits": target_summaries,
             "reference_reachability_is_bounded_static_evidence": True,
             "optional_target_semantics_proven": False,
