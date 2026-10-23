@@ -15,7 +15,6 @@ from stage35_table_tail_link import movl_literal
 from stage85_disc_slot_writer_census import MAX_FILE_SIZE
 from stage86_set_module_signature_audit import read_root_payloads
 from stage91_set07_overlay_entry_guard_audit import (
-    _all_occurrences,
     _be16,
     _branch,
     _find_main_th2_low_load,
@@ -36,16 +35,20 @@ def _delay_aware_cfg(data: bytes, start: int, end: int, max_states: int = 50000)
     nodes: set[int] = set()
     delay_slots: set[int] = set()
     edges: dict[int, set[int]] = defaultdict(set)
+    state_edges: dict[tuple[int, tuple[int, ...] | None], set[tuple[int, tuple[int, ...] | None]]] = defaultdict(set)
     exits: Counter[str] = Counter()
 
     def valid(pc: int) -> bool:
         return start <= pc < end and pc + 2 <= len(data) and not (pc & 1)
 
-    def queue_targets(source: int, targets: tuple[int, ...]) -> None:
+    def queue_targets(source_state: tuple[int, tuple[int, ...] | None], targets: tuple[int, ...]) -> None:
+        source = source_state[0]
         for target in targets:
             if valid(target):
                 edges[source].add(target)
-                queue.append((target, None))
+                next_state = (target, None)
+                state_edges[source_state].add(next_state)
+                queue.append(next_state)
             else:
                 exits["out_of_bound_successor"] += 1
 
@@ -63,13 +66,13 @@ def _delay_aware_cfg(data: bytes, start: int, end: int, max_states: int = 50000)
         # A pending successor set means this instruction is a branch delay slot.
         # Execute it as a normal instruction, then apply the pending transfer.
         if pending is not None:
-            queue_targets(pc, pending)
+            queue_targets(state, pending)
             continue
 
         op = _be16(data, pc)
         branch = _branch(pc, op)
         if branch is None:
-            queue_targets(pc, (pc + 2,))
+            queue_targets(state, (pc + 2,))
             continue
 
         kind, target, delayed = branch
@@ -88,13 +91,15 @@ def _delay_aware_cfg(data: bytes, start: int, end: int, max_states: int = 50000)
             else:  # JMP, BRAF, RTS, RTE
                 after = ()
             edges[pc].add(slot)
-            queue.append((slot, after))
+            slot_state = (slot, after)
+            state_edges[state].add(slot_state)
+            queue.append(slot_state)
             continue
 
         if kind in ("BT", "BF"):
-            queue_targets(pc, tuple(x for x in (target, pc + 2) if x is not None))
+            queue_targets(state, tuple(x for x in (target, pc + 2) if x is not None))
         elif kind == "BSR":
-            queue_targets(pc, (pc + 2,))
+            queue_targets(state, (pc + 2,))
         else:
             exits[f"terminal_{kind.lower()}"] += 1
 
@@ -104,13 +109,15 @@ def _delay_aware_cfg(data: bytes, start: int, end: int, max_states: int = 50000)
         "nodes": nodes,
         "delay_slots": delay_slots,
         "edges": {node: set(targets) for node, targets in edges.items()},
+        "state_nodes": set(seen_states),
+        "state_edges": {node: set(targets) for node, targets in state_edges.items()},
         "exit_counts": dict(exits),
         "state_count": len(seen_states),
     }
 
 
-def _dominators(entry: int, nodes: set[int], edges: dict[int, set[int]]) -> dict[int, set[int]]:
-    predecessors: dict[int, set[int]] = {node: set() for node in nodes}
+def _dominators(entry, nodes, edges):
+    predecessors = {node: set() for node in nodes}
     for source, targets in edges.items():
         for target in targets:
             if target in predecessors:
@@ -183,12 +190,20 @@ def _r14_delay_slot_dominates_r4_guard(data: bytes, cfg: dict, entry: int, name_
                           if _be16(data, pos) == 0x604F and _be16(data, pos + 2) == 0x880F
                           and (_branch(pos + 4, _be16(data, pos + 4)) or (None, None, False))[0] == "BF"
                           and (_branch(pos + 4, _be16(data, pos + 4)) or (None, None, False))[1] == continuation), None)
-    delay_slot = mask_pos + 6 if mask_pos is not None else None
-    dom = _dominators(entry, cfg["nodes"], cfg["edges"]) if entry in cfg["nodes"] else {}
+    if mask_pos is None or r4_cmp_branch is None:
+        return False
+    branch = _branch(mask_pos + 4, _be16(data, mask_pos + 4))
+    if branch is None or branch[0] != "BT/S" or branch[1] != continuation:
+        return False
+    delay_slot = mask_pos + 6
+    delay_state = (delay_slot, tuple(x for x in (branch[1], mask_pos + 8) if x is not None))
+    entry_state = (entry, None)
+    guard_state = (r4_cmp_branch, None)
+    dom = _dominators(entry_state, cfg["state_nodes"], cfg["state_edges"]) if entry_state in cfg["state_nodes"] else {}
     return bool(
-        delay_slot is not None and r4_cmp_branch is not None
-        and delay_slot in cfg["delay_slots"]
-        and delay_slot in dom.get(r4_cmp_branch, set())
+        delay_slot in cfg["delay_slots"]
+        and delay_state in cfg["state_nodes"]
+        and delay_state in dom.get(guard_state, set())
         and _be16(data, delay_slot) == 0x64E1
     )
 
