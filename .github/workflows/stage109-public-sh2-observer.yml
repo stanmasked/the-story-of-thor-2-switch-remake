@@ -1,0 +1,59 @@
+name: Stage 109 public SH2 instruction observer
+on:
+  pull_request:
+    paths:
+      - 'tools/stage109_patch_mednafen_observer.py'
+      - 'tests/test_stage109_patch_mednafen_observer.py'
+      - '.github/workflows/stage109-public-sh2-observer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage109-public-observer-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic public patch tests
+        run: python3 -m unittest discover -s tests -p 'test_stage109_patch_mednafen_observer.py' -v
+      - name: Get Debian-packaged open-source Mednafen only
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage109-public-mednafen.sources.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dpkg-dev build-essential python3
+          sudo apt-get build-dep -y mednafen
+          mkdir -p /tmp/stage109-public-src
+          cd /tmp/stage109-public-src
+          apt-get source mednafen
+          test -f mednafen-*/src/ss/ss.cpp
+      - name: Insert default-disabled SH2 observer into public Mednafen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage109-public-src/mednafen-*
+          python3 "$GITHUB_WORKSPACE/tools/stage109_patch_mednafen_observer.py" src/ss/ss.cpp
+          grep -Fq 'STAGE109_SH2_OPT_IN_OBSERVER_V1' src/ss/ss.cpp
+      - name: Build public instrumented emulator, no private runtime inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage109-public-src/mednafen-*
+          ./configure --disable-nls
+          make -j 2
+          test -x src/mednafen
+          mkdir -p "$GITHUB_WORKSPACE/stage109-public-binary"
+          cp src/mednafen "$GITHUB_WORKSPACE/stage109-public-binary/mednafen-stage109"
+          sha256sum "$GITHUB_WORKSPACE/stage109-public-binary/mednafen-stage109" > "$GITHUB_WORKSPACE/stage109-public-binary/binary-sha256.txt"
+          dpkg-query -W -f='mednafen-source-version=${Version}\n' mednafen 2>/dev/null || true
+          printf 'observer-version=stage109-sh2-opt-in-v1\nno-rom-or-bios-in-public-ci=true\n' > "$GITHUB_WORKSPACE/stage109-public-binary/provenance.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage109-public-instrumented-mednafen
+          path: stage109-public-binary/
+          if-no-files-found: error
+          retention-days: 1
