@@ -76,7 +76,7 @@ class Stage103SysChgscuimArgumentTests(unittest.TestCase):
         put16(data, 0x10, 0xE503)
         put16(data, 0x12, 0x420B)
         put16(data, 0x14, 0xE4FF)
-        put16(data, 0x20, 0x9416)
+        put16(data, 0x20, 0x940E)
         put16(data, 0x22, 0x420B)
         put16(data, 0x24, 0xE500)
         put16(data, 0x40, 0xFF7F)
