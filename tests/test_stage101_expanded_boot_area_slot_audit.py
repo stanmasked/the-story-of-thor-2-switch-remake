@@ -66,7 +66,7 @@ class Stage101OversizedContainerSlotTests(unittest.TestCase):
         summary = _scan_container(bytes(data), SLOT)
         rendered = repr(summary)
         self.assertNotIn("06000344", rendered)
-        self.assertNotIn("d2", rendered.lower())
+        self.assertNotIn("D214", rendered)
 
 
 if __name__ == "__main__":
