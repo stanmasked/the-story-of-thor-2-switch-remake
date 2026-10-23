@@ -7,7 +7,7 @@
 ## Что найдено
 
 - Один и тот же низкоадресный slot используется как источник указателя функции в boot/system-area коде, `0TH2.BIN` и `SET07.BIN`.
-- В root payloads обнаружено 10 точных PC-relative literal references: 6 в `0TH2.BIN` и 4 в `SET07.BIN`. Из них распознано 9 call patterns `MOV.L @Rn,Rm` → `JSR @Rm` с допустимой подготовкой аргументов между dereference и вызовом.
+- В root payloads обнаружено 10 точных PC-relative literal references: 6 в `0TH2.BIN` и 4 в `SET07.BIN`. Из них распознано 10 call patterns `MOV.L @Rn,Rm` → `JSR @Rm` с допустимой подготовкой аргументов между dereference и вызовом.
 - В boot/system-area code window найдено ещё одно literal reference и один такой call pattern.
 - Ограниченный alias/store scan не нашёл ни одного точного кандидата записи в этот slot среди 30 просканированных root payloads или в исследованном boot-code window.
 - Runtime-значение slot и адрес функции, хранящейся в нём, из самого ISO восстановить не удалось. Поэтому его роль как resident service/interface slot — обоснованная гипотеза по повторяющемуся шаблону использования, но не доказанная семантическая идентификация.
