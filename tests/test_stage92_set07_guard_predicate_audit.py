@@ -8,7 +8,8 @@ from stage92_set07_guard_predicate_audit import (
     _dominators,
     _find_guard_predicates,
     _loader_result_summary,
-    _r14_delay_slot_dominates_r4_guard,
+    _snapshot_summary,
+    _r14_indirect_word_load_dominates_r4_guard,
 )
 
 
@@ -84,7 +85,7 @@ class Stage92Set07GuardPredicateTests(unittest.TestCase):
         self.assertTrue(result["r4_equals_15_guard_found"])
         self.assertTrue(result["tst_0x60_branch_skips_entry_when_mask_is_zero"])
         self.assertTrue(result["tst_0x60_fallthrough_requires_nonzero_mask"])
-        self.assertTrue(result["mask_guard_delay_slot_copies_r14_to_r4"])
+        self.assertTrue(result["mask_guard_delay_slot_loads_word_from_r14_into_r4"])
         self.assertTrue(result["tst_0x10_nonzero_selects_alternate_path"])
         self.assertEqual(result["three_value_guard_count"], 1)
 
@@ -123,7 +124,7 @@ class Stage92Set07GuardPredicateTests(unittest.TestCase):
         self.assertFalse(result["load_call_to_entry_shape_matches"])
         self.assertIsNone(result["loader_result_explicitly_checked_before_entry"])
 
-    def test_delay_slot_source_is_proven_when_it_dominates_r4_guard(self):
+    def test_indirect_word_load_is_proven_when_it_dominates_r4_guard(self):
         data = bytearray(0x100)
         name_pos = 0x70
         continuation = name_pos + 14
@@ -135,9 +136,9 @@ class Stage92Set07GuardPredicateTests(unittest.TestCase):
         put16(data, 0x22, 0x880F)
         put16(data, 0x24, branch(0x8B00, 0x24, continuation))
         cfg = _delay_aware_cfg(bytes(data), 0x10, len(data))
-        self.assertTrue(_r14_delay_slot_dominates_r4_guard(bytes(data), cfg, 0x10, name_pos, continuation))
+        self.assertTrue(_r14_indirect_word_load_dominates_r4_guard(bytes(data), cfg, 0x10, name_pos, continuation))
 
-    def test_delay_slot_source_is_not_proven_when_r4_guard_has_bypass(self):
+    def test_indirect_word_load_is_not_proven_when_r4_guard_has_bypass(self):
         data = bytearray(0x100)
         name_pos = 0x70
         continuation = name_pos + 14
@@ -152,6 +153,30 @@ class Stage92Set07GuardPredicateTests(unittest.TestCase):
         put16(data, 0x24, branch(0x8B00, 0x24, continuation))
         cfg = _delay_aware_cfg(bytes(data), 0x10, len(data))
         self.assertFalse(_r14_delay_slot_dominates_r4_guard(bytes(data), cfg, 0x10, name_pos, continuation))
+
+    def test_adjacent_global_words_are_traced_through_local_snapshot_slots(self):
+        data = bytearray(0x180)
+        name_pos = 0x100
+        put_literal_load(data, 0x10, 13, 0xA0, 0x002FDF34)
+        put16(data, 0x12, 0x7FFC)
+        put_literal_load(data, 0x20, 14, 0xA4, 0x002FDF36)
+        put_literal_load(data, 0x30, 1, 0xA8, 0x06096A4A)
+        put16(data, 0x32, 0x2230)
+        put16(data, 0x34, 0x6311)
+        put16(data, 0x36, 0x2D31)
+        put_literal_load(data, 0x40, 0, 0xAC, 0x06096A4C)
+        put16(data, 0x42, 0x6301)
+        put16(data, 0x44, 0xBDD1)
+        put16(data, 0x46, 0x2E31)
+        put16(data, 0x50, 0x65D1)
+        put16(data, 0x52, 0x64E1)
+        result = _snapshot_summary(bytes(data), name_pos, name_pos + 14)
+        self.assertTrue(result["r13_slot_populated_from_global_word_pattern_found"])
+        self.assertTrue(result["r14_slot_populated_from_global_word_pattern_found"])
+        self.assertTrue(result["r5_reloaded_from_r13_word_slot_pattern_found"])
+        self.assertTrue(result["r4_loaded_from_r14_word_slot_pattern_found"])
+        self.assertTrue(result["local_word_slots_are_adjacent"])
+        self.assertTrue(result["source_global_words_are_adjacent"])
 
     def test_dominator_analysis_does_not_claim_optional_delay_slot_is_mandatory(self):
         nodes = {0, 2, 4, 6}
