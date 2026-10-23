@@ -12,15 +12,12 @@ from pathlib import Path
 ANCHOR = 'CPU[0].Step<0, EmulateICache, DebugMode>();'
 SIGNATURE = '/* STAGE109_SH2_OPT_IN_OBSERVER_V1 */'
 
+GLOBAL_HEADERS = "#include <cstdio>\n#include <cstdlib>\n#include <cstdint>\n#include <cstring>\n"
+
 IMPL = r'''
 /* STAGE109_SH2_OPT_IN_OBSERVER_V1 */
 // Default-disabled public source instrumentation. Only an explicitly configured
 // private execution writes any raw register data, and never to stdout.
-#include <cstdio>
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-
 struct Stage109Observer
 {
  bool configured = false;
@@ -116,7 +113,7 @@ def patch(text: str) -> str:
     if(stage109_observer.enabled) stage109_observer.Record(CPU[0],"pre");
     ''' + ANCHOR + '''
     if(stage109_observer.enabled) stage109_observer.Record(CPU[0],"post");'''
-    return text.replace(ANCHOR, replacement, 1)
+    return GLOBAL_HEADERS + text.replace(ANCHOR, replacement, 1)
 
 
 def main() -> None:
