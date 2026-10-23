@@ -26,7 +26,6 @@ from stage83_unpaired_callback_context_audit import generic_prologue_candidates
 from stage86_set_module_signature_audit import read_root_payloads
 
 SET_NAMES = tuple(f"SET{i:02d}.BIN".encode("ascii") for i in range(8))
-WRITER_TARGET_FALLBACK = 0x060085A8
 LOW_BASE_HYPOTHESES = (0x06000000, CODE_LOAD_ADDRESS)
 
 
