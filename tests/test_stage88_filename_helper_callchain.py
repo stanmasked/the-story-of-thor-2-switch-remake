@@ -120,7 +120,7 @@ class Stage88FilenameHelperCallchainTests(unittest.TestCase):
         data = call_fixture()
         result = summarize_function(data, 0x20, 0x80)
         self.assertTrue(result["r1_not_explicitly_written_before_first_jsr"])
-        self.assertFalse(result["first_jsr_target_resolved"] is False)
+        self.assertTrue(result["first_jsr_target_resolved"])
 
     def test_aggregate_output_redacts_addresses_and_offsets(self):
         result = summarize_function(call_fixture(), 0x20, 0x80)
