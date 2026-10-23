@@ -51,6 +51,8 @@ class Stage84LowCFGOrderTests(unittest.TestCase):
         self.assertEqual(result["callback_reachability_states"], 2)
         self.assertTrue(result["callback_reached_without_writer_already_seen"])
         self.assertTrue(result["callback_reached_with_writer_already_seen"])
+        self.assertFalse(result["callback_reached_on_all_paths_with_writer_already_seen"])
+        self.assertFalse(result["callback_reached_on_all_paths_without_writer_already_seen"])
 
     def test_writer_not_reachable_in_bound(self):
         data = bytearray(0x100)
