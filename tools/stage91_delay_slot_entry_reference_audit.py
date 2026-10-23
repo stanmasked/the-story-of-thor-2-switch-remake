@@ -18,7 +18,6 @@ from stage86_set_module_signature_audit import read_root_payloads
 from stage87_set_filename_loader_context import (
     _call_target_from_recent_literal,
     _is_jsr,
-    _pc_literal_refs,
 )
 from stage88_filename_helper_callchain import (
     _first_preserved_filename_call,
@@ -68,6 +67,7 @@ def summarize_address_references(
             or call_counts[target_address]
             or raw_words
             or branch_counts[target_offset]
+            or _has_frame_prologue(data, target_offset)
         ),
     }
 
