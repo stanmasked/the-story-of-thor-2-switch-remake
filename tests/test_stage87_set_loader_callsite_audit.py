@@ -151,6 +151,24 @@ class Stage87SetLoaderCallsiteTests(unittest.TestCase):
         )
         self.assertFalse(result["overlay_execution_confirmed"])
 
+    def test_set07_callsite_matches_main_generic_loader_target(self):
+        data = bytearray(0x400)
+        string_pos = 0x200
+        data[string_pos:string_pos + 10] = b"SET07.BIN\x00"
+        candidate_base = 0x002DA000
+        loader_target = CODE_LOAD_ADDRESS + 0xA0F8
+        put_literal_load(data, 0x2E, 5, 0xF8, 0x060D8000)
+        put_literal_load(data, 0x30, 4, 0x100, candidate_base + string_pos)
+        put_literal_load(data, 0x32, 2, 0x104, loader_target)
+        put16(data, 0x34, 0x420B)
+        put16(data, 0x36, 0x0009)
+        result = summarize_low_set07(bytes(data), candidate_base, {loader_target})
+        self.assertEqual(result["set07_loader_call_candidates"], 1)
+        self.assertTrue(result["set07_call_target_matches_main_loader"])
+        self.assertEqual(result["set07_destination_argument_candidates"], 1)
+        self.assertTrue(result["set07_loader_call_candidate_found"])
+        self.assertFalse(result["overlay_execution_confirmed"])
+
     def test_output_schema_never_contains_offsets_or_addresses(self):
         data = bytearray(0x400)
         table_pos = 0x180
