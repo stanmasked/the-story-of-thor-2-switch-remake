@@ -14,7 +14,7 @@ from pathlib import Path
 from stage35_table_tail_link import movl_literal
 from stage85_disc_slot_writer_census import MAX_FILE_SIZE
 from stage86_set_module_signature_audit import read_root_payloads
-from stage91_set07_overlay_entry_guard_audit import _be16, _branch
+from stage91_set07_overlay_entry_guard_audit import _be16, _branch, _find_main_th2_low_load
 
 DISPATCH_SLOT = 0x0600026C
 OPTIONAL_TARGETS = (0x002E20F8, 0x002E227C)
@@ -70,7 +70,7 @@ def _store_candidate_after_ref(data: bytes, pos: int, base_reg: int) -> bool:
     return False
 
 
-def _summarize_payloads(payloads: dict[str, bytes]) -> dict:
+def _summarize_payloads(payloads: dict[str, bytes], th2_low_base: int | None = None) -> dict:
     ref_counts = {}
     call_counts = {}
     store_candidate_counts = {}
@@ -101,6 +101,31 @@ def _summarize_payloads(payloads: dict[str, bytes]) -> dict:
     total_refs = sum(ref_counts.values())
     total_calls = sum(call_counts.values())
     total_store_candidates = sum(store_candidate_counts.values())
+    low = payloads.get("TH2.LOW", b"")
+    target_offsets = [target - th2_low_base if th2_low_base is not None else None for target in OPTIONAL_TARGETS]
+    target_in_low = [offset is not None and 0 <= offset < len(low) for offset in target_offsets]
+    prologue_like = []
+    for offset, inside in zip(target_offsets, target_in_low):
+        prologue_like.append(bool(inside and _be16(low, offset) == 0x2FE6 and any(_be16(low, offset + delta) == 0x4F22 for delta in range(2, 0x10, 2))))
+    wait_loop = False
+    if target_in_low[0]:
+        offset = target_offsets[0]
+        branch = _branch(offset + 0x12, _be16(low, offset + 0x12))
+        wait_loop = bool(
+            _be16(low, offset + 0x0E) == 0x6130
+            and _be16(low, offset + 0x10) == 0x2118
+            and branch is not None and branch[0] == "BF" and branch[1] == offset + 0x0C
+        )
+    value_switch = False
+    if target_in_low[1]:
+        offset = target_offsets[1]
+        comparisons = [(0x24, 0x8800), (0x28, 0x8801), (0x2C, 0x8802), (0x30, 0x8803), (0x34, 0x8804)]
+        branches = [_branch(offset + delta + 2, _be16(low, offset + delta + 2)) for delta, _ in comparisons]
+        value_switch = bool(
+            _be16(low, offset + 0x22) == 0x60F1
+            and all(_be16(low, offset + delta) == op for delta, op in comparisons)
+            and all(branch is not None and branch[0] == "BT" for branch in branches)
+        )
     return {
         "dispatcher_slot_literal_reference_candidates": total_refs,
         "modules_with_dispatcher_slot_references": modules_with_refs,
@@ -112,6 +137,13 @@ def _summarize_payloads(payloads: dict[str, bytes]) -> dict:
         "store_candidates_by_root_module": store_candidate_counts,
         "optional_indirect_target_literal_reference_counts": target_ref_counts,
         "optional_indirect_target_module_counts": {key: len(value) for key, value in target_modules.items()},
+        "th2_low_candidate_base_available": th2_low_base is not None,
+        "optional_indirect_target_1_maps_inside_th2_low": target_in_low[0],
+        "optional_indirect_target_2_maps_inside_th2_low": target_in_low[1],
+        "optional_indirect_target_1_has_prologue_like_entry": prologue_like[0],
+        "optional_indirect_target_2_has_prologue_like_entry": prologue_like[1],
+        "optional_indirect_target_1_starts_with_global_wait_loop": wait_loop,
+        "optional_indirect_target_2_has_value_switch_0_through_4": value_switch,
         "dispatcher_slot_initialization_source_resolved": False,
         "callback_registration_proven_by_slot_census": False,
     }
@@ -119,7 +151,10 @@ def _summarize_payloads(payloads: dict[str, bytes]) -> dict:
 
 def analyze(image: Path) -> dict:
     root = read_root_payloads(image, max_file_size=MAX_FILE_SIZE)
-    summary = _summarize_payloads(root["payloads"])
+    main = root["payloads"].get("0TH2.BIN", b"")
+    _, _, low_bases = _find_main_th2_low_load(main) if main else ({}, [], [])
+    low_base = low_bases[0] if len(set(low_bases)) == 1 else None
+    summary = _summarize_payloads(root["payloads"], low_base)
     return {
         "schema_version": 1,
         "stage": "stage95_dispatch_slot_cross_module_audit",
