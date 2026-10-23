@@ -12,6 +12,7 @@ from pathlib import Path
 
 from stage18_writer_guard_flow import be16
 from stage35_table_tail_link import movl_literal
+from stage75_indirect_services_count_provenance import _slot_dispatch_sites
 from stage79_expanded_store_alias_audit import scan_store_aliases
 
 SECTOR = 2048
