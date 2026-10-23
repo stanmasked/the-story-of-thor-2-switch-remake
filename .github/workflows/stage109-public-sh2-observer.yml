@@ -23,13 +23,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage109-public-mednafen.sources.list
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq dpkg-dev build-essential python3
-          sudo apt-get build-dep -y mednafen
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 180 apt-get install -y -qq --no-install-recommends \
+            build-essential pkg-config python3 curl libflac-dev liblzo2-dev libmpcdec-dev \
+            libsamplerate0-dev libsdl2-dev libtrio-dev libvorbisidec-dev libzstd-dev zlib1g-dev
           mkdir -p /tmp/stage109-public-src
           cd /tmp/stage109-public-src
-          apt-get source mednafen
+          base='https://archive.ubuntu.com/ubuntu/pool/universe/m/mednafen'
+          curl -fsSL --retry 3 --connect-timeout 12 --max-time 120 "${base}/mednafen_1.29.0%2Bdfsg-1build3.dsc" -o mednafen.dsc
+          curl -fsSL --retry 3 --connect-timeout 12 --max-time 120 "${base}/mednafen_1.29.0%2Bdfsg.orig.tar.xz" -o mednafen.tar.xz
+          python3 - <<'PY'
+          import hashlib,re
+          from pathlib import Path
+          dsc=Path('mednafen.dsc').read_text()
+          expected=re.search(r'^ ([0-9a-f]{64})\s+\d+\s+mednafen_1\.29\.0\+dfsg\.orig\.tar\.xz$',dsc,re.M)
+          if not expected: raise SystemExit('trusted source SHA256 absent from official DSC')
+          actual=hashlib.sha256(Path('mednafen.tar.xz').read_bytes()).hexdigest()
+          if actual!=expected.group(1): raise SystemExit('source archive SHA256 mismatch')
+          print('Verified official Ubuntu mednafen 1.29.0 source SHA256')
+          PY
+          tar -xf mednafen.tar.xz
           test -f mednafen-*/src/ss/ss.cpp
       - name: Insert default-disabled SH2 observer into public Mednafen source
         shell: bash
