@@ -88,7 +88,7 @@ class Stage99CalleeRegisterPreservationTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual([item["kind"] for item in calls], ["JSR", "BSR"])
 
-    def test_output_contract_has_no_raw_address_fields(self):
+    def test_pointer_slot_address_is_retained_for_internal_audit(self):
         data = bytearray(0x40)
         put_literal_load(data, 0x10, 2, 0x30, 0x06000344)
         put16(data, 0x12, 0x6222)
