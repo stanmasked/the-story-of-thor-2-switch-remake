@@ -44,7 +44,7 @@ class Stage90LeafEntryDirectCFGTests(unittest.TestCase):
     def test_loop_with_return_exit_detects_cycle(self):
         data = bytearray(0x100)
         put16(data, 0x10, 0x8B02)  # BF to 0x18
-        put16(data, 0x12, 0xA0FD)  # BRA back to 0x10
+        put16(data, 0x12, 0xAFFD)  # BRA back to 0x10
         put16(data, 0x14, 0x0009)  # BRA delay slot
         put16(data, 0x18, 0x000B)
         put16(data, 0x1A, 0x0009)
