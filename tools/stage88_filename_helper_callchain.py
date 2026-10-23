@@ -88,7 +88,8 @@ def summarize_function(data: bytes, entry: int, end: int) -> dict:
     ]
     internal_targets = [
         target for target in in_executable
-        if _inside_candidate_interval(
+        if not _has_frame_prologue(data, target - CODE_LOAD_ADDRESS)
+        and _inside_candidate_interval(
             len(data), target - CODE_LOAD_ADDRESS, prologues
         )
     ]
@@ -107,7 +108,7 @@ def summarize_function(data: bytes, entry: int, end: int) -> dict:
         "unique_literal_targets": len(set(resolved)),
         "unique_targets_inside_main_executable": len(set(in_executable)),
         "unique_targets_with_frame_prologue_signature": len(set(frame_targets)),
-        "unique_targets_inside_another_candidate_function_interval": len(set(internal_targets)),
+        "unique_targets_without_frame_prologue_inside_candidate_interval": len(set(internal_targets)),
         "first_jsr_target_resolved": bool(calls and calls[0][1] is not None),
         "r1_not_explicitly_written_before_first_jsr": r1_not_explicitly_written,
         "all_jsr_literal_targets_resolved": bool(calls) and len(resolved) == len(calls),
@@ -212,10 +213,11 @@ def analyze(image: Path) -> dict:
             "first_helper": helper1,
             "first_nested_callee": helper2,
             "next_nested_callee": helper3,
-            "filename_argument_flow_is_only_a_register-preservation_candidate": True,
+            "filename_argument_flow_is_only_a_register_preservation_candidate": True,
             "file_open_or_read_semantics_confirmed": False,
             "full_control_flow_reachability_proven": False,
             "indirect_callee_register_effects_modeled": False,
+            "prior_bsr_callee_register_effects_modeled": False,
             "all_alternate_function_entries_excluded": False,
             "runtime_file_loading_confirmed": False,
             "runtime_set07_execution_confirmed": False,
