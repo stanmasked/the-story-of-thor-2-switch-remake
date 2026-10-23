@@ -15,7 +15,7 @@ The targeted scan closes one narrow coverage gap from Stage 100: the three conta
 
 ## Implementation and tests
 
-Added `tools/stage101_expanded_boot_area_slot_audit.py` (JSON stage identifier: `stage101_oversized_container_slot_scan.py`). It resolves the slot using the established Stage 97–100 static chain, scans oversized ISO payloads one at a time, and emits only filenames, sizes, and aggregate match counts. It does not output pointer values, offsets, instruction bytes, hashes of private payloads, or raw data.
+Added `tools/stage101_oversized_container_slot_scan.py` (JSON stage identifier: `stage101_oversized_container_slot_scan`). It resolves the slot using the established Stage 97–100 static chain, scans oversized ISO payloads one at a time, and emits only filenames, sizes, and aggregate match counts. It does not output pointer values, offsets, instruction bytes, hashes of private payloads, or raw data.
 
 Added six synthetic tests for PC-relative literal detection, separation of raw byte occurrences from instruction references, multiple matches, aggregate-only summaries, no-match cases, and the output privacy contract. GitHub Actions results will be recorded in the private manifest after the run completes.
 
