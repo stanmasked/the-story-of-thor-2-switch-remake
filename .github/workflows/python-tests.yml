@@ -13,8 +13,41 @@ concurrency:
 jobs:
   python-tests:
     runs-on: ubuntu-latest
+    outputs:
+      native_changed: ${{ steps.changed-paths.outputs.native_changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changed-paths
+        name: Detect native source changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base=""
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base="$PR_BASE_SHA"
+          elif [[ -n "$PUSH_BEFORE_SHA" && ! "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
+            base="$PUSH_BEFORE_SHA"
+          elif git rev-parse "$HEAD_SHA^" >/dev/null 2>&1; then
+            base="$(git rev-parse "$HEAD_SHA^")"
+          fi
+          if [[ -n "$base" ]] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            changed="$(git diff --name-only "$base" "$HEAD_SHA")"
+          else
+            changed="native/unknown"
+          fi
+          if printf '%s\n' "$changed" | grep -qE '^native/'; then
+            echo "native_changed=true" >> "$GITHUB_OUTPUT"
+            echo "Native source changes detected; host jobs will run."
+          else
+            echo "native_changed=false" >> "$GITHUB_OUTPUT"
+            echo "No native source changes; host jobs will be skipped."
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -24,6 +57,8 @@ jobs:
         run: python -m compileall -q tools
 
   native-framebuffer-host:
+    needs: python-tests
+    if: needs.python-tests.outputs.native_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +74,8 @@ jobs:
           /tmp/thor2-vdp1-stream-layout-test
 
   native-gameplay-host:
+    needs: python-tests
+    if: needs.python-tests.outputs.native_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
