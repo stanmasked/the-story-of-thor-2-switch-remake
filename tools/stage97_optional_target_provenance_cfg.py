@@ -178,10 +178,9 @@ def _summarize_target_sites(
     }
 
 
-def _summarize_th2_low_mapping(
-    main: bytes, low: bytes, targets: tuple[int, ...] = OPTIONAL_TARGETS
+def _map_targets_with_bases(
+    low: bytes, bases: list[int], targets: tuple[int, ...] = OPTIONAL_TARGETS
 ) -> dict:
-    load_summary, _load_targets, bases = _find_main_th2_low_load(main) if main else ({}, [], [])
     distinct_bases = sorted(set(bases))
     unique_base = distinct_bases[0] if len(distinct_bases) == 1 else None
     low_prologues = set(_generic_prologues(low))
@@ -213,14 +212,21 @@ def _summarize_th2_low_mapping(
         "th2_low_load_destination_candidate_count": len(bases),
         "th2_low_load_destination_distinct_candidate_count": len(distinct_bases),
         "th2_low_load_destination_unique_candidate_available": unique_base is not None,
-        "th2_low_name_occurrence_count": load_summary.get("th2_low_name_occurrences", 0),
-        "th2_low_literal_backed_load_call_candidate_count": load_summary.get("literal_backed_load_call_candidates", 0),
-        "th2_low_destination_argument_candidate_count": load_summary.get("load_destination_argument_candidates", 0),
         "generic_stack_prologue_candidate_count_in_th2_low": len(low_prologues),
         "optional_targets": target_results,
         "mapping_is_runtime_address_space_proof": False,
     }
 
+
+def _summarize_th2_low_mapping(main: bytes, low: bytes) -> dict:
+    load_summary, _load_targets, bases = _find_main_th2_low_load(main) if main else ({}, [], [])
+    mapped = _map_targets_with_bases(low, bases)
+    return {
+        **mapped,
+        "th2_low_name_occurrence_count": load_summary.get("th2_low_name_occurrences", 0),
+        "th2_low_literal_backed_load_call_candidate_count": load_summary.get("literal_backed_load_call_candidates", 0),
+        "th2_low_destination_argument_candidate_count": load_summary.get("load_destination_argument_candidates", 0),
+    }
 
 def analyze(image: Path) -> dict:
     root = read_root_payloads(image, max_file_size=MAX_FILE_SIZE)
