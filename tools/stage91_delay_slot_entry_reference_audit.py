@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 
 from stage18_writer_guard_flow import be16
-from stage35_table_tail_link import branch_destination
+from stage35_table_tail_link import branch_destination, movl_literal
 from stage71_callback_dispatch_chain import CODE_LOAD_ADDRESS
 from stage86_set_module_signature_audit import read_root_payloads
 from stage87_set_filename_loader_context import (
@@ -22,49 +23,53 @@ from stage87_set_filename_loader_context import (
 from stage88_filename_helper_callchain import (
     _first_preserved_filename_call,
     _function_end,
+    _has_frame_prologue,
     _resolve_call_sites,
 )
 from stage89_leaf_entry_shape_audit import classify_target_entry
 
 
 def summarize_address_references(
-    data: bytes, target_offset: int, payloads: dict[str, bytes]
+    data: bytes,
+    target_offset: int,
+    payloads: dict[str, bytes],
+    literal_counts: Counter | None = None,
+    call_counts: Counter | None = None,
+    branch_counts: Counter | None = None,
 ) -> dict:
     target_address = CODE_LOAD_ADDRESS + target_offset
-    pc_refs = len(_pc_literal_refs(data, target_address))
-    resolved_calls = sum(
-        1 for _, target in _resolve_call_sites(data, 0, len(data))
-        if target == target_address
-    )
+    if literal_counts is None:
+        literal_counts = Counter(
+            literal[1]
+            for pos in range(0, len(data) - 5, 2)
+            if (literal := movl_literal(data, pos)) is not None
+        )
+    if call_counts is None:
+        call_counts = Counter(
+            target for _, target in _resolve_call_sites(data, 0, len(data))
+            if target is not None
+        )
+    if branch_counts is None:
+        branch_counts = Counter(
+            branch[1]
+            for pos in range(0, len(data) - 1, 2)
+            if (branch := branch_destination(pos, be16(data, pos))) is not None
+        )
     needle = target_address.to_bytes(4, "big")
     raw_words = sum(payload.count(needle) for payload in payloads.values())
-    branch_targets = 0
-    for pos in range(0, len(data) - 1, 2):
-        branch = branch_destination(pos, be16(data, pos))
-        if branch is not None and branch[1] == target_offset:
-            branch_targets += 1
     return {
-        "pc_relative_literal_refs": pc_refs,
-        "resolved_literal_backed_jsr_calls": resolved_calls,
+        "pc_relative_literal_refs": literal_counts[target_address],
+        "resolved_literal_backed_jsr_calls": call_counts[target_address],
         "raw_big_endian_words_in_scanned_root_payloads": raw_words,
-        "direct_branch_target_refs": branch_targets,
-        "has_frame_prologue_signature": (
-            target_offset >= 0 and target_offset + 2 <= len(data)
-            and be16(data, target_offset) == 0x2FE6
-            and (
-                be16(data, target_offset + 2) == 0x4F22
-                or any(
-                    be16(data, target_offset + offset) == 0x4F22
-                    for offset in range(2, 0x1A, 2)
-                    if target_offset + offset + 2 <= len(data)
-                )
-            )
-        ),
+        "direct_branch_target_refs": branch_counts[target_offset],
+        "has_frame_prologue_signature": _has_frame_prologue(data, target_offset),
         "direct_entry_evidence_present": bool(
-            pc_refs or resolved_calls or raw_words or branch_targets
+            literal_counts[target_address]
+            or call_counts[target_address]
+            or raw_words
+            or branch_counts[target_offset]
         ),
     }
-
 
 def _leaf_targets_from_callchain(data: bytes) -> list[tuple[str, int]]:
     first_call = _first_preserved_filename_call(data)
@@ -134,14 +139,40 @@ def analyze(image: Path) -> dict:
         }
     candidates = _leaf_targets_from_callchain(main)
     profiles = []
+    offsets_to_scan = set()
+    target_to_delay = []
     for shape, target in candidates:
         target_offset = target - CODE_LOAD_ADDRESS
         rts_pos = _first_rts_in_window(main, target_offset)
         if rts_pos is None:
             continue
         delay_offset = rts_pos + 2
-        target_refs = summarize_address_references(main, target_offset, root["payloads"])
-        delay_refs = summarize_address_references(main, delay_offset, root["payloads"])
+        target_to_delay.append((shape, target_offset, delay_offset))
+        offsets_to_scan.update((target_offset, delay_offset))
+    target_addresses = {CODE_LOAD_ADDRESS + offset for offset in offsets_to_scan}
+    literal_counts = Counter()
+    call_counts = Counter()
+    branch_counts = Counter()
+    for pos in range(0, len(main) - 5, 2):
+        literal = movl_literal(main, pos)
+        if literal is not None and literal[1] in target_addresses:
+            literal_counts[literal[1]] += 1
+    for pos in range(0, len(main) - 1, 2):
+        opcode = be16(main, pos)
+        if _is_jsr(opcode):
+            target = _call_target_from_recent_literal(main, pos)
+            if target in target_addresses:
+                call_counts[target] += 1
+        branch = branch_destination(pos, opcode)
+        if branch is not None and branch[1] in offsets_to_scan:
+            branch_counts[branch[1]] += 1
+    for shape, target_offset, delay_offset in target_to_delay:
+        target_refs = summarize_address_references(
+            main, target_offset, root["payloads"], literal_counts, call_counts, branch_counts
+        )
+        delay_refs = summarize_address_references(
+            main, delay_offset, root["payloads"], literal_counts, call_counts, branch_counts
+        )
         profiles.append({
             "target_shape": shape,
             "target_pc_literal_refs": target_refs["pc_relative_literal_refs"],
