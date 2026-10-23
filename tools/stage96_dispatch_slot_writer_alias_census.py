@@ -67,6 +67,7 @@ def _summarize_payload(name: str, data: bytes) -> dict:
         "size_bytes": len(data),
         "exact_dispatch_slot_pc_literal_reference_count": exact_refs,
         "exact_dispatch_slot_literal_register_counts": dict(sorted(exact_regs.items())),
+        "raw_dispatch_slot_occurrences": _raw_occurrence_summary(data, DISPATCH_SLOT),
         "nearby_pointer_literal_load_sites_scanned": aliases["nearby_pc_literal_pointer_load_sites"],
         "bounded_exact_target_store_candidate_count": aliases["exact_target_store_candidates"],
         "bounded_store_candidates_by_mode": aliases["store_candidates_by_mode"],
