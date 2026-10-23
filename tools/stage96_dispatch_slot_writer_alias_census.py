@@ -17,6 +17,7 @@ from stage35_table_tail_link import movl_literal
 from stage79_expanded_store_alias_audit import scan_store_aliases
 from stage85_disc_slot_writer_census import MAX_FILE_SIZE
 from stage86_set_module_signature_audit import read_root_payloads
+from stage91_set07_overlay_entry_guard_audit import _generic_prologues
 from stage95_dispatch_slot_cross_module_audit import DISPATCH_SLOT
 
 # Include likely pointer bases within this distance of the target slot. This
@@ -65,6 +66,7 @@ def _summarize_payload(name: str, data: bytes) -> dict:
     return {
         "module": name,
         "size_bytes": len(data),
+        "generic_stack_prologue_candidate_count": len(_generic_prologues(data)),
         "exact_dispatch_slot_pc_literal_reference_count": exact_refs,
         "exact_dispatch_slot_literal_register_counts": dict(sorted(exact_regs.items())),
         "raw_dispatch_slot_occurrences": _raw_occurrence_summary(data, DISPATCH_SLOT),
@@ -100,6 +102,9 @@ def summarize_payloads(payloads: dict[str, bytes]) -> dict:
             modules_with_unresolved_indexed += 1
     return {
         "root_modules_scanned": len(per_module),
+        "modules_with_generic_stack_prologue_candidates": sum(
+            item["generic_stack_prologue_candidate_count"] > 0 for item in per_module.values()
+        ),
         "exact_dispatch_slot_pc_literal_reference_count": totals["exact_refs"],
         "nearby_pointer_literal_load_sites_scanned": totals["nearby_loads"],
         "bounded_exact_target_store_candidate_count": totals["store_candidates"],
