@@ -93,6 +93,29 @@ class Stage97OptionalTargetProvenanceTests(unittest.TestCase):
         self.assertEqual(summary["reference_sites_reachable_only_as_delay_slots"], 1)
         self.assertEqual(summary["reachable_indirect_use_candidate_count"], 0)
 
+    def test_explicit_entry_anchor_recovers_reachable_target_call(self):
+        data = bytearray(0x100)
+        put_literal_load(data, 0x10, 0, 0x80, OPTIONAL_TARGETS[0])
+        put16(data, 0x12, 0x402B)  # JSR @R0
+        put16(data, 0x14, 0x0009)
+        summary = _summarize_target_sites(
+            {"0TH2.BIN": bytes(data)},
+            OPTIONAL_TARGETS[0],
+            {"0TH2.BIN": [(0x10, 0x20)]},
+        )
+        self.assertEqual(summary["reference_sites_in_prologue_windows"], 0)
+        self.assertEqual(summary["reference_sites_in_explicit_entry_anchor_windows"], 1)
+        self.assertEqual(summary["reachable_reference_sites"], 1)
+        self.assertEqual(summary["reachable_indirect_use_candidate_count"], 1)
+
+    def test_indirect_tail_jump_is_classified_separately(self):
+        data = bytearray(reachable_call_fixture())
+        put16(data, 0x1A, 0x402A)  # JMP @R0
+        self.assertEqual(
+            _target_use_after_literal(bytes(data), 0x18, 0, 0x80),
+            "indirect_tail_jump",
+        )
+
     def test_literal_candidate_without_prologue_window_is_unmapped(self):
         data = bytearray(0x100)
         put_literal_load(data, 0x10, 0, 0x80, OPTIONAL_TARGETS[0])
