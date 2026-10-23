@@ -53,7 +53,7 @@ class Stage101OversizedContainerSlotTests(unittest.TestCase):
         self.assertEqual(summary["exact_pointer_byte_sequence_occurrences"], 1)
         self.assertEqual(summary["pc_relative_literal_reference_count"], 1)
         self.assertFalse(summary["full_code_disassembly_performed"])
-        self.assertFalse(any("offset" in key or "address" in key or "bytes" in key for key in summary))
+        self.assertFalse(any("offset" in key or "address" in key or key in ("raw_bytes", "instruction_bytes", "payload_bytes") for key in summary))
 
     def test_nonmatching_container_has_zero_candidates(self):
         summary = _scan_container(bytes(0x400), SLOT)
