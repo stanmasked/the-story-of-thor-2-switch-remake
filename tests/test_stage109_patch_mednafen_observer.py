@@ -5,7 +5,7 @@ import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from stage109_patch_mednafen_observer import patch, SIGNATURE
 
-BASE = '''#include "sh7095.h"\nSH7095 CPU[2]{ {"a",0,nullptr}, {"b",1,nullptr} };\nvoid loop(){\n CPU[0].Step<0, EmulateICache, DebugMode>();\n}\n'''
+BASE = '''#include <mednafen/mednafen.h>\n#include "sh7095.h"\nSH7095 CPU[2]{ {"a",0,nullptr}, {"b",1,nullptr} };\nvoid loop(){\n CPU[0].Step<0, EmulateICache, DebugMode>();\n}\n'''
 
 class Stage109PatchTests(unittest.TestCase):
     def test_inserts_once(self):
@@ -14,12 +14,21 @@ class Stage109PatchTests(unittest.TestCase):
         self.assertIn('Record(CPU[0],"pre")',v)
         self.assertIn('Record(CPU[0],"post")',v)
     def test_standard_headers_remain_outside_emulator_namespace(self):
-        original = '#include <vector>\nnamespace MDFN_IEN_SS {\n' + BASE + '\n}'
+        original = '#include <mednafen/mednafen.h>\n#include <vector>\nnamespace MDFN_IEN_SS {\n' + BASE.replace('#include <mednafen/mednafen.h>\n','') + '\n}'
         result = patch(original)
-        self.assertTrue(result.startswith('#include <cstdio>\n#include <cstdlib>'))
+        self.assertLess(result.index('#include <mednafen/mednafen.h>'), result.index('#include <cstdio>'))
         self.assertLess(result.index('#include <cstring>'), result.index('namespace MDFN_IEN_SS'))
         self.assertEqual(result.count('#include <cstdio>'), 1)
 
+    def test_header_order_respects_mednafen_types_guard(self):
+        result=patch(BASE)
+        self.assertLess(result.index('#include <mednafen/mednafen.h>'),result.index('#include <cstdint>'))
+    def test_missing_core_include_rejected(self):
+        with self.assertRaisesRegex(ValueError,'mednafen_core_include'):
+            patch(BASE.replace('#include <mednafen/mednafen.h>\n',''))
+    def test_duplicate_core_include_rejected(self):
+        with self.assertRaisesRegex(ValueError,'mednafen_core_include'):
+            patch('#include <mednafen/mednafen.h>\n'+BASE)
     def test_absent_anchor_fail_closed(self):
         with self.assertRaisesRegex(ValueError,'cpu_step_anchor'): patch(BASE.replace('Step<0,','Step<1,'))
     def test_two_anchors_fail_closed(self):
