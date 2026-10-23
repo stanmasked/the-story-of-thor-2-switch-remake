@@ -200,6 +200,7 @@ def _source_register_seed_summary(
     seed_seen = False
     explicit_overwrite = False
     calls_before_store = 0
+    non_call_control_transfers_before_store = 0
     for pos in range(entry, site, 2):
         opcode = _be16(data, pos)
         destination = (opcode >> 8) & 0xF
@@ -211,10 +212,12 @@ def _source_register_seed_summary(
             continue
 
         branch = _branch(pos, opcode)
-        if branch is not None and branch[0] in ("BSR", "JSR", "BSRF"):
-            # A call whose delay slot is the store has not run yet.
+        if branch is not None:
             if pos + 2 < site:
-                calls_before_store += 1
+                if branch[0] in ("BSR", "JSR", "BSRF"):
+                    calls_before_store += 1
+                else:
+                    non_call_control_transfers_before_store += 1
             continue
 
         if seed_seen and _may_write_register(opcode, source_register):
@@ -226,8 +229,10 @@ def _source_register_seed_summary(
         "last_immediate_seed_value": seed_value if seed_seen else None,
         "explicit_caller_local_overwrite_after_seed": explicit_overwrite,
         "lexical_call_sites_before_store": calls_before_store,
+        "non_call_control_transfers_before_store": non_call_control_transfers_before_store,
         "source_value_proven_at_store": bool(
             seed_seen and not explicit_overwrite and calls_before_store == 0
+            and non_call_control_transfers_before_store == 0
         ),
         "interprocedural_register_preservation_proven": False,
     }
@@ -354,7 +359,7 @@ def analyze(image: Path) -> dict:
                 item["exact_control_byte_literal_reference_count"] > 0
                 for item in per_module.values()
             ),
-            "exact_effective_address_byte_or_word_store_candidate_count": all_stores,
+            "exact_effective_address_store_candidate_count": all_stores,
             "modules_with_exact_store_candidates": sum(
                 item["exact_effective_address_store_candidate_count"] > 0
                 for item in per_module.values()
