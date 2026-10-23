@@ -88,9 +88,9 @@ class Stage82LowModuleAuditTests(unittest.TestCase):
 
     def test_writer_pair_requires_immediate_call_distance(self):
         data = module_fixture()
-        put16(data, 0x44, 0x0009)
+        put16(data, 0x46, 0x0009)  # clobber callback literal-load instruction
         result = summarize_module(data, WRITER, CALLBACK, COUNT)
-        self.assertEqual(result["writer_then_callback_pairs"], 1)
+        self.assertEqual(result["writer_then_callback_pairs"], 0)
 
     def test_raw_slot_reference_is_not_a_literal_load_proof(self):
         data = bytearray(0x240)
