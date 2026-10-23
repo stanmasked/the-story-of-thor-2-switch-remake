@@ -172,7 +172,11 @@ def scan_store_aliases(
             data, pos, literal[1], literal[2], target, radius, window
         )
         for store_pos, detail in found.items():
-            stores[store_pos] = detail
+            if store_pos in stores:
+                previous = stores[store_pos]
+                stores[store_pos] = (detail[0], previous[1] or detail[1])
+            else:
+                stores[store_pos] = detail
         unresolved_indexed.update(indexed)
 
     modes = Counter(mode for mode, _ in stores.values())
