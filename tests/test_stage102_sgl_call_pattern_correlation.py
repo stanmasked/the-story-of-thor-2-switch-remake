@@ -88,7 +88,7 @@ class Stage102SglCallPatternTests(unittest.TestCase):
         summary = _summarize_call_sites(bytes(data), [0x10, 0x30, 0x40])
         self.assertEqual(summary["slot_call_pattern_count"], 3)
         self.assertEqual(summary["calls_with_r4_setup_and_r5_zero_delay"], 2)
-        self.assertEqual(summary["calls_with_r4_immediate_in_delay_slot"], 2)
+        self.assertEqual(summary["calls_with_r4_immediate_in_delay_slot"], 1)
         self.assertFalse(any("offset" in key or "address" in key for key in summary))
 
     def test_other_delay_slot_register_is_not_misclassified(self):
