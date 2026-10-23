@@ -123,10 +123,16 @@ def _cfg_pair_order(
     return {
         "candidate_function_cfg_states_visited": len(visited),
         "callback_reached_with_writer_already_seen": (
-            callback_writer_states == {True}
+            True in callback_writer_states
         ),
         "callback_reached_without_writer_already_seen": (
             False in callback_writer_states
+        ),
+        "callback_reached_on_all_paths_with_writer_already_seen": (
+            callback_writer_states == {True}
+        ),
+        "callback_reached_on_all_paths_without_writer_already_seen": (
+            callback_writer_states == {False}
         ),
         "writer_reached_after_callback_on_a_direct_path": (
             True in writer_callback_states
