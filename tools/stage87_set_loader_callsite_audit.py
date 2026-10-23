@@ -123,9 +123,10 @@ def summarize_main_set_loader(data: bytes) -> dict:
     return _find_set_table_loader_targets(data)[0]
 
 
-def _find_main_name_loader_targets(data: bytes, name: bytes) -> tuple[dict, list[int]]:
+def _find_main_name_loader_targets(data: bytes, name: bytes) -> tuple[dict, list[int], list[int]]:
     occurrences = _all_occurrences(data, name)
     targets = []
+    destination_candidates = []
     internal_targets = 0
     for string_pos in occurrences:
         address = CODE_LOAD_ADDRESS + string_pos
@@ -146,27 +147,37 @@ def _find_main_name_loader_targets(data: bytes, name: bytes) -> tuple[dict, list
             internal_targets += int(
                 CODE_LOAD_ADDRESS <= callee_load[1] < CODE_LOAD_ADDRESS + len(data)
             )
+            # The preceding literal load places a second argument in R5. Treat
+            # it as a destination candidate only; the callee's full semantics
+            # still need independent verification.
+            destination_load = movl_literal(data, pos - 2)
+            if destination_load is not None and destination_load[2] == 5:
+                destination_candidates.append(destination_load[1])
     summary = {
         "filename_occurrences": len(occurrences),
         "literal_backed_filename_load_call_candidates": len(targets),
         "candidate_call_targets_inside_main_image": internal_targets,
+        "load_destination_argument_candidates": len(destination_candidates),
+        "unique_load_destination_candidate_available": len(set(destination_candidates)) == 1,
         "runtime_file_load_confirmed": False,
     }
-    return summary, targets
+    return summary, targets, destination_candidates
 
 
 def summarize_main_th2_low_load(data: bytes) -> dict:
     return _find_main_name_loader_targets(data, b"TH2.LOW")[0]
 
 
-def summarize_low_set07(data: bytes) -> dict:
+def summarize_low_set07(data: bytes, candidate_load_base: int | None = None) -> dict:
     set07 = _all_occurrences(data, b"SET07.BIN")
     if not set07:
         return {
             "set07_name_occurrences": 0,
             "nearby_resource_filename_kinds": 0,
             "nearby_resource_filename_cluster_found": False,
-            "load_address_known": False,
+            "candidate_load_base_available": candidate_load_base is not None,
+            "set07_literal_backed_xref_count": 0,
+            "candidate_base_self_reference_consistent": False,
             "direct_code_xref_status": "name_not_found",
             "overlay_execution_confirmed": False,
         }
@@ -176,12 +187,33 @@ def summarize_low_set07(data: bytes) -> dict:
     window_end = min(len(data), start + len(b"SET07.BIN") + 0x2000)
     window = data[window_start:window_end]
     nearby = sum(1 for name in LOW_NEARBY_RESOURCE_NAMES if name in window)
+    xrefs = (
+        _literal_references_to(data, candidate_load_base + start)
+        if candidate_load_base is not None else []
+    )
+    referenced_resource_kinds = 0
+    if candidate_load_base is not None:
+        for name in (b"SET07.BIN",) + LOW_NEARBY_RESOURCE_NAMES:
+            for pos in _all_occurrences(data, name):
+                if _literal_references_to(data, candidate_load_base + pos):
+                    referenced_resource_kinds += 1
+                    break
+    consistent = candidate_load_base is not None and bool(xrefs)
     return {
         "set07_name_occurrences": len(set07),
         "nearby_resource_filename_kinds": nearby,
         "nearby_resource_filename_cluster_found": nearby == len(LOW_NEARBY_RESOURCE_NAMES),
-        "load_address_known": False,
-        "direct_code_xref_status": "unresolved_without_verified_load_address",
+        "candidate_load_base_available": candidate_load_base is not None,
+        "set07_literal_backed_xref_count": len(xrefs),
+        "candidate_base_literal_backed_resource_name_kinds": referenced_resource_kinds,
+        "candidate_base_self_reference_consistent": consistent,
+        "direct_code_xref_status": (
+            "literal_backed_reference_matches_candidate_load_base"
+            if consistent else
+            "unresolved_without_candidate_load_base"
+            if candidate_load_base is None else
+            "no_literal_backed_reference_at_candidate_load_base"
+        ),
         "overlay_execution_confirmed": False,
     }
 
@@ -203,16 +235,22 @@ def analyze(image: Path) -> dict:
         },
         [],
     )
-    low_load_summary, low_load_targets = _find_main_name_loader_targets(main, b"TH2.LOW") if main else (
+    low_load_summary, low_load_targets, destination_candidates = _find_main_name_loader_targets(main, b"TH2.LOW") if main else (
         {
             "filename_occurrences": 0,
             "literal_backed_filename_load_call_candidates": 0,
             "candidate_call_targets_inside_main_image": 0,
+            "load_destination_argument_candidates": 0,
+            "unique_load_destination_candidate_available": False,
             "runtime_file_load_confirmed": False,
         },
         [],
+        [],
     )
-    low_summary = summarize_low_set07(low)
+    candidate_load_base = (
+        destination_candidates[0] if len(set(destination_candidates)) == 1 else None
+    )
+    low_summary = summarize_low_set07(low, candidate_load_base)
     common_loader = bool(set(set_targets).intersection(low_load_targets))
     return {
         "schema_version": 1,
