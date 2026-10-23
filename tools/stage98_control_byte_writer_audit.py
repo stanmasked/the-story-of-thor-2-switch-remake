@@ -171,8 +171,18 @@ def _scan_control_byte_writers(
 
 
 def _caller_entry_anchors(data: bytes) -> list[tuple[int, int, int]]:
-    """Find literal-backed JSRs whose target is inside the same loaded main payload."""
+    """Find reachable boot-path literal-backed JSRs into the main payload.
+
+    Restricting callsites to the CFG reachable from the root entry prevents
+    pointer-pool/data words that merely resemble MOV.L + JSR from becoming
+    arbitrary function-entry anchors.
+    """
     prologues = _generic_prologues(data)
+    boot_cfg = _delay_aware_cfg(data, 0, min(len(data), MAX_FUNCTION_WINDOW))
+    reachable_boot_calls = {
+        pc for pc, pending in boot_cfg["state_nodes"]
+        if pending is None
+    }
     anchors = set()
     code_end = CODE_LOAD_ADDRESS + len(data)
     for pos in range(0, len(data) - 5, 2):
@@ -180,6 +190,8 @@ def _caller_entry_anchors(data: bytes) -> list[tuple[int, int, int]]:
         if literal is None or not CODE_LOAD_ADDRESS <= literal[1] < code_end:
             continue
         call_pos = pos + 2
+        if call_pos not in reachable_boot_calls:
+            continue
         opcode = _be16(data, call_pos)
         if (opcode & 0xF0FF) != 0x400B or ((opcode >> 8) & 0xF) != literal[2]:
             continue
