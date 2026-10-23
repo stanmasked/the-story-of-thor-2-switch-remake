@@ -13,6 +13,13 @@ class Stage109PatchTests(unittest.TestCase):
         self.assertEqual(v.count(SIGNATURE),1)
         self.assertIn('Record(CPU[0],"pre")',v)
         self.assertIn('Record(CPU[0],"post")',v)
+    def test_standard_headers_remain_outside_emulator_namespace(self):
+        original = '#include <vector>\nnamespace MDFN_IEN_SS {\n' + BASE + '\n}'
+        result = patch(original)
+        self.assertTrue(result.startswith('#include <cstdio>\n#include <cstdlib>'))
+        self.assertLess(result.index('#include <cstring>'), result.index('namespace MDFN_IEN_SS'))
+        self.assertEqual(result.count('#include <cstdio>'), 1)
+
     def test_absent_anchor_fail_closed(self):
         with self.assertRaisesRegex(ValueError,'cpu_step_anchor'): patch(BASE.replace('Step<0,','Step<1,'))
     def test_two_anchors_fail_closed(self):
