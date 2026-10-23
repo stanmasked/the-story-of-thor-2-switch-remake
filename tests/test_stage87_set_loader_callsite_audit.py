@@ -99,14 +99,17 @@ class Stage87SetLoaderCallsiteTests(unittest.TestCase):
         data = bytearray(0x400)
         name_pos = 0x200
         data[name_pos:name_pos + 8] = b"TH2.LOW\x00"
-        put_literal_load(data, 0x10, 4, 0x100, CODE_LOAD_ADDRESS + name_pos)
-        put_literal_load(data, 0x12, 3, 0x104, CODE_LOAD_ADDRESS + 0x300)
-        put16(data, 0x14, 0x430B)
-        put16(data, 0x16, 0x0009)
+        put_literal_load(data, 0x2E, 5, 0xF8, 0x002DA000)
+        put_literal_load(data, 0x30, 4, 0x100, CODE_LOAD_ADDRESS + name_pos)
+        put_literal_load(data, 0x32, 3, 0x104, CODE_LOAD_ADDRESS + 0x300)
+        put16(data, 0x34, 0x430B)
+        put16(data, 0x36, 0x0009)
         result = summarize_main_th2_low_load(bytes(data))
         self.assertEqual(result["filename_occurrences"], 1)
         self.assertEqual(result["literal_backed_filename_load_call_candidates"], 1)
         self.assertEqual(result["candidate_call_targets_inside_main_image"], 1)
+        self.assertEqual(result["load_destination_argument_candidates"], 1)
+        self.assertTrue(result["unique_load_destination_candidate_available"])
         self.assertFalse(result["runtime_file_load_confirmed"])
 
     def test_th2_low_name_call_rejects_non_nop_delay_slot(self):
@@ -123,8 +126,8 @@ class Stage87SetLoaderCallsiteTests(unittest.TestCase):
     def test_low_set07_is_not_assumed_to_have_known_load_address(self):
         result = summarize_low_set07(b"\x00" * 20 + b"SET07.BIN\x00")
         self.assertEqual(result["set07_name_occurrences"], 1)
-        self.assertFalse(result["load_address_known"])
-        self.assertEqual(result["direct_code_xref_status"], "unresolved_without_verified_load_address")
+        self.assertFalse(result["candidate_load_base_available"])
+        self.assertEqual(result["direct_code_xref_status"], "unresolved_without_candidate_load_base")
         self.assertFalse(result["overlay_execution_confirmed"])
 
     def test_low_resource_filename_cluster_is_recognized_conservatively(self):
@@ -132,6 +135,21 @@ class Stage87SetLoaderCallsiteTests(unittest.TestCase):
         result = summarize_low_set07(names)
         self.assertTrue(result["nearby_resource_filename_cluster_found"])
         self.assertEqual(result["nearby_resource_filename_kinds"], 5)
+
+    def test_set07_literal_xref_matches_candidate_load_base(self):
+        data = bytearray(0x400)
+        string_pos = 0x200
+        data[string_pos:string_pos + 10] = b"SET07.BIN\x00"
+        candidate_base = 0x002DA000
+        put_literal_load(data, 0x20, 4, 0x100, candidate_base + string_pos)
+        result = summarize_low_set07(bytes(data), candidate_base)
+        self.assertEqual(result["set07_literal_backed_xref_count"], 1)
+        self.assertTrue(result["candidate_base_self_reference_consistent"])
+        self.assertEqual(
+            result["direct_code_xref_status"],
+            "literal_backed_reference_matches_candidate_load_base",
+        )
+        self.assertFalse(result["overlay_execution_confirmed"])
 
     def test_output_schema_never_contains_offsets_or_addresses(self):
         data = bytearray(0x400)
