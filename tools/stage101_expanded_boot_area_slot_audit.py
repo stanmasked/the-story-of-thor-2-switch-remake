@@ -52,7 +52,7 @@ def analyze(image: Path) -> dict:
     if target is None:
         return {
             "schema_version": 1,
-            "stage": "stage101_expanded_boot_area_slot_audit",
+            "stage": "stage101_oversized_container_slot_scan",
             "analysis": {
                 "stage100_service_slot_recovered": False,
                 "oversized_container_scan_performed": False,
@@ -90,7 +90,7 @@ def analyze(image: Path) -> dict:
     found_names = {item["container_name"] for item in summaries}
     return {
         "schema_version": 1,
-        "stage": "stage101_expanded_boot_area_slot_audit",
+        "stage": "stage101_oversized_container_slot_scan",
         "analysis": {
             "root_file_count": root["root_file_count"],
             "full_payloads_scanned": root.get(
