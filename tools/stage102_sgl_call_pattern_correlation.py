@@ -108,7 +108,6 @@ def analyze(image: Path) -> dict:
         }
 
     module_summaries = []
-    aggregate_calls = []
     for name, data in sorted(payloads.items()):
         refs, calls = _slot_call_pattern_sites(data, slot)
         if not refs and not calls:
@@ -119,14 +118,13 @@ def analyze(image: Path) -> dict:
             "exact_literal_reference_count": refs,
             **summary,
         })
-        aggregate_calls.extend((data, pos) for pos in calls)
 
     raw_iso = image.read_bytes()
     boot_area = raw_iso[:BOOT_SYSTEM_AREA_SIZE]
     boot_refs, boot_calls = _slot_call_pattern_sites(
         boot_area, slot, BOOT_CODE_START, BOOT_CODE_END
     )
-    root_counts = _summarize_call_sites(b"", []) if not aggregate_calls else {
+    root_counts = _summarize_call_sites(b"", []) if not module_summaries else {
         key: sum(item.get(key, 0) for item in module_summaries)
         for key in (
             "slot_call_pattern_count",
