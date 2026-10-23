@@ -55,7 +55,7 @@ class Stage79ExpandedStoreAliasTests(unittest.TestCase):
         # Reverse copy from R2 into R4, then write through R4.
         data = fixture()
         put16(data, 0x22, 0x6423)  # MOV R2,R4
-        put16(data, 0x24, 0x4431)  # MOV.W R3,@R4
+        put16(data, 0x24, 0x2431)  # MOV.W R3,@R4
         result = scan_store_aliases(data)
         self.assertEqual(result["exact_target_store_candidates"], 1)
         self.assertEqual(result["store_candidates_requiring_pointer_arithmetic_or_alias"], 1)
