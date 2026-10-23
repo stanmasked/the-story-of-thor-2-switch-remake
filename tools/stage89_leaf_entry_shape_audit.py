@@ -14,7 +14,6 @@ from pathlib import Path
 from stage18_writer_guard_flow import be16
 from stage35_table_tail_link import branch_destination
 from stage71_callback_dispatch_chain import CODE_LOAD_ADDRESS
-from stage83_unpaired_callback_context_audit import generic_prologue_candidates
 from stage86_set_module_signature_audit import read_root_payloads
 from stage87_set_filename_loader_context import _is_jsr
 from stage88_filename_helper_callchain import (
@@ -122,7 +121,6 @@ def analyze(image: Path) -> dict:
                     layer3 = summarize_layer(main, entry3, end3)
 
     layer1 = summarize_layer(main, helper_entry, helper_end)
-    all_prologues = generic_prologue_candidates(main)
     no_prologue_targets = [
         target for target in set(layer1_targets)
         if not _has_frame_prologue(main, target - CODE_LOAD_ADDRESS)
