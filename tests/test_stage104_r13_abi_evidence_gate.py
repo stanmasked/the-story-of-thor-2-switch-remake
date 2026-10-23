@@ -113,7 +113,7 @@ class Stage104R13EvidenceGateTests(unittest.TestCase):
         result = evaluate(stage99, stage103)
         analysis = result["analysis"]
         self.assertFalse(analysis["private_addresses_or_code_offsets_emitted"])
-        self.assertFalse(any("offset" in key or "address" in key or "raw" in key for key in analysis))
+        self.assertFalse(any(( "offset" in key or "address" in key or "raw" in key) and key != "private_addresses_or_code_offsets_emitted" for key in analysis))
 
     def test_missing_evidence_fails_closed(self):
         result = evaluate({}, {})["analysis"]
