@@ -143,6 +143,8 @@ def audit_direct_cfg(
         nonlocal cycle_detected
         colors[node] = 1
         for successor in edges.get(node, ()):
+            if successor not in nodes:
+                continue
             if colors.get(successor) == 1:
                 cycle_detected = True
             elif colors.get(successor, 0) == 0:
