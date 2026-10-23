@@ -173,14 +173,14 @@ def _find_guard_predicates(data: bytes, name_pos: int, continuation: int) -> dic
         "r4_equals_15_guard_found": bool(r4_eq),
         "tst_0x60_branch_skips_entry_when_mask_is_zero": mask is not None,
         "tst_0x60_fallthrough_requires_nonzero_mask": mask is not None,
-        "mask_guard_delay_slot_copies_r14_to_r4": bool(mask and mask["delay_slot_opcode"] == 0x64E1),
+        "mask_guard_delay_slot_loads_word_from_r14_into_r4": bool(mask and mask["delay_slot_opcode"] == 0x64E1),
         "r4_guard_follows_mask_guard_delay_slot": bool(mask and r4_eq and mask["delay_slot"] < r4_eq[0]),
         "tst_0x10_nonzero_selects_alternate_path": alternate is not None,
         "three_value_guard_count": min(len(global_eq), len(r5_eq), len(r4_eq)),
     }
 
 
-def _r14_delay_slot_dominates_r4_guard(data: bytes, cfg: dict, entry: int, name_pos: int, continuation: int) -> bool:
+def _r14_indirect_word_load_dominates_r4_guard(data: bytes, cfg: dict, entry: int, name_pos: int, continuation: int) -> bool:
     lower = max(0, name_pos - 0x200)
     mask_pos = next((pos for pos in range(lower, name_pos, 2)
                      if _be16(data, pos) == 0x6031 and _be16(data, pos + 2) == 0xC860
@@ -206,6 +206,52 @@ def _r14_delay_slot_dominates_r4_guard(data: bytes, cfg: dict, entry: int, name_
         and delay_state in dom.get(guard_state, set())
         and _be16(data, delay_slot) == 0x64E1
     )
+
+
+def _snapshot_summary(data: bytes, name_pos: int, continuation: int) -> dict:
+    lower = max(0, name_pos - 0x200)
+    r13_slots = []
+    r14_slots = []
+    global_r1_snapshots = []
+    global_r0_snapshots = []
+    r5_reload = False
+    r4_indirect_load = False
+
+    for pos in range(lower, name_pos, 2):
+        literal = movl_literal(data, pos)
+        if literal is not None:
+            if literal[2] == 13 and _be16(data, pos + 2) == 0x7FFC:
+                r13_slots.append(literal[1])
+            if literal[2] == 14:
+                r14_slots.append(literal[1])
+            if literal[2] == 1:
+                for q in range(pos + 2, min(pos + 12, name_pos - 3), 2):
+                    if _be16(data, q) == 0x6311 and _be16(data, q + 2) == 0x2D31:
+                        global_r1_snapshots.append(literal[1])
+                        break
+            if literal[2] == 0:
+                q = pos + 2
+                if q + 6 < name_pos and _be16(data, q) == 0x6301:
+                    branch = _branch(q + 2, _be16(data, q + 2))
+                    if branch is not None and branch[0] == "BSR" and _be16(data, q + 4) == 0x2E31:
+                        global_r0_snapshots.append(literal[1])
+        if _be16(data, pos) == 0x65D1 and pos < name_pos:
+            r5_reload = True
+        if _be16(data, pos) == 0x64E1 and pos < name_pos:
+            r4_indirect_load = True
+
+    local_slots_adjacent = any(r14 == r13 + 2 for r13 in r13_slots for r14 in r14_slots)
+    source_words_adjacent = any(b == a + 2 for a in global_r1_snapshots for b in global_r0_snapshots)
+    return {
+        "r13_local_word_slot_found": bool(r13_slots),
+        "r14_local_word_slot_found": bool(r14_slots),
+        "r13_slot_populated_from_global_word_pattern_found": bool(global_r1_snapshots),
+        "r14_slot_populated_from_global_word_pattern_found": bool(global_r0_snapshots),
+        "r5_reloaded_from_r13_word_slot_pattern_found": r5_reload,
+        "r4_loaded_from_r14_word_slot_pattern_found": r4_indirect_load,
+        "local_word_slots_are_adjacent": local_slots_adjacent,
+        "source_global_words_are_adjacent": source_words_adjacent,
+    }
 
 
 def _loader_result_summary(data: bytes, name_pos: int, buffer_base: int) -> dict:
@@ -268,7 +314,7 @@ def analyze(image: Path) -> dict:
     cfg = _delay_aware_cfg(low, function_start, function_end)
     guards = _find_guard_predicates(low, name_pos, continuation)
     loader = _loader_result_summary(low, name_pos, buffer_base)
-    r14_from_r4_guard_proven = _r14_delay_slot_dominates_r4_guard(
+    r14_indirect_load_proven = _r14_indirect_word_load_dominates_r4_guard(
         low, cfg, function_start, name_pos, continuation
     )
 
@@ -283,7 +329,8 @@ def analyze(image: Path) -> dict:
             "delay_aware_cfg_reaches_entry_call": entry_call_pos in cfg["nodes"],
             "delay_aware_cfg_instruction_count": len(cfg["nodes"]),
             "delay_slot_count_in_cfg": len(cfg["delay_slots"]),
-            "r14_to_r4_delay_slot_dominates_r4_guard": r14_from_r4_guard_proven,
+            "r14_indirect_word_load_dominates_r4_guard": r14_indirect_load_proven,
+            "snapshots": _snapshot_summary(low, name_pos, continuation),
             "guards": guards,
             "loader_return": loader,
             "runtime_overlay_execution_confirmed": False,
