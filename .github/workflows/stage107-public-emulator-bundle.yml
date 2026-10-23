@@ -1,0 +1,48 @@
+name: Stage 107 public Mednafen binary bundle
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/stage107-public-emulator-bundle.yml'
+permissions:
+  contents: read
+concurrency:
+  group: stage107-mednafen-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Install distribution-signed open-source emulator
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends mednafen
+          dpkg-query -W -f='${Version}\n' mednafen
+      - name: Bundle public emulator and dependent shared libraries only
+        run: |
+          set -euo pipefail
+          mkdir -p stage107-public-runtime/lib
+          exe="$(command -v mednafen || true)"
+          if test -z "$exe"; then exe="/usr/games/mednafen"; fi
+          test -x "$exe"
+          cp -L "$exe" stage107-public-runtime/mednafen
+          ldd "$exe" | awk '/=> \/[^ ]+/{print $3}' | sort -u | while IFS= read -r lib; do
+            name="$(basename "$lib")"
+            case "$name" in
+              libc.so.6|libm.so.6|libpthread.so.0|libdl.so.2|librt.so.1|libresolv.so.2|libgcc_s.so.1|libstdc++.so.6|ld-linux-*) continue;;
+            esac
+            cp -L "$lib" "stage107-public-runtime/lib/$name"
+          done
+          printf 'version=' > stage107-public-runtime/PACKAGE_VERSION.txt
+          dpkg-query -W -f='${Version}\n' mednafen >> stage107-public-runtime/PACKAGE_VERSION.txt
+          sha256sum stage107-public-runtime/mednafen > stage107-public-runtime/BINARY_SHA256.txt
+          find stage107-public-runtime -type f -printf '%P %s bytes\n'
+      - name: Upload public-only reproducible emulator bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage107-public-mednafen-runtime
+          path: stage107-public-runtime/
+          if-no-files-found: error
+          retention-days: 1
