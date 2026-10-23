@@ -83,6 +83,14 @@ class Stage96DispatchSlotWriterAliasTests(unittest.TestCase):
         result = _summarize_payload("TEST.BIN", bytes(data))
         self.assertEqual(result["bounded_exact_target_store_candidate_count"], 1)
 
+    def test_unknown_r0_index_is_reported_as_unresolved_not_a_writer(self):
+        data = bytearray(0x100)
+        put_literal_load(data, 0x10, 2, 0x80, DISPATCH_SLOT - 0x29)
+        put16(data, 0x12, 0x0234)  # MOV.B R3,@(R0,R2), R0 is unknown
+        result = _summarize_payload("MONS.BIN", bytes(data))
+        self.assertEqual(result["bounded_exact_target_store_candidate_count"], 0)
+        self.assertEqual(result["unresolved_indexed_store_candidate_count"], 1)
+
     def test_raw_occurrences_are_not_equated_with_pc_literal_references(self):
         data = bytearray(0x100)
         put32(data, 0x20, DISPATCH_SLOT)
