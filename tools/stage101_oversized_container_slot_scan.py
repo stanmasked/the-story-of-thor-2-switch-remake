@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 
 from stage35_table_tail_link import movl_literal
-from stage75_indirect_services_count_provenance import MAX_FILE_SIZE
+from stage85_disc_slot_writer_census import MAX_FILE_SIZE
 from stage86_set_module_signature_audit import read_root_payloads
 from stage100_low_memory_service_slot_provenance import _discover_service_slot
 
