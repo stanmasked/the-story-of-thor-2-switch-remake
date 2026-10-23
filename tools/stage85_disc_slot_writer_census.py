@@ -61,6 +61,8 @@ def summarize_payload(data: bytes) -> dict:
     return {
         "slot_a_pc_literal_load_sites": slot_a_refs,
         "slot_b_pc_literal_load_sites": slot_b_refs,
+        "slot_a_indirect_dispatch_sites": len(_slot_dispatch_sites(data, SERVICE_SLOT_A)),
+        "slot_b_indirect_dispatch_sites": len(_slot_dispatch_sites(data, SERVICE_SLOT_B)),
         "slot_a_bounded_store_candidates": slot_a_writes[
             "exact_target_store_candidates"
         ],
@@ -146,10 +148,14 @@ def analyze(image: Path) -> dict:
             or result["slot_b_pc_literal_load_sites"]
             or result["slot_a_bounded_store_candidates"]
             or result["slot_b_bounded_store_candidates"]
+            or result["slot_a_indirect_dispatch_sites"]
+            or result["slot_b_indirect_dispatch_sites"]
         ):
             per_file[name] = {
                 "slot_a_pc_literal_load_sites": result["slot_a_pc_literal_load_sites"],
                 "slot_b_pc_literal_load_sites": result["slot_b_pc_literal_load_sites"],
+                "slot_a_indirect_dispatch_sites": result["slot_a_indirect_dispatch_sites"],
+                "slot_b_indirect_dispatch_sites": result["slot_b_indirect_dispatch_sites"],
                 "slot_a_bounded_store_candidates": result["slot_a_bounded_store_candidates"],
                 "slot_b_bounded_store_candidates": result["slot_b_bounded_store_candidates"],
             }
@@ -170,6 +176,8 @@ def analyze(image: Path) -> dict:
             "files_with_only_raw_slot_byte_matches": raw_only_files,
             "total_slot_a_pc_literal_load_sites": total_a_refs,
             "total_slot_b_pc_literal_load_sites": total_b_refs,
+            "total_slot_a_indirect_dispatch_sites": sum(item["slot_a_indirect_dispatch_sites"] for item in per_file.values()),
+            "total_slot_b_indirect_dispatch_sites": sum(item["slot_b_indirect_dispatch_sites"] for item in per_file.values()),
             "total_slot_a_bounded_store_candidates": total_a_writes,
             "total_slot_b_bounded_store_candidates": total_b_writes,
             "low_slot_a_raw_occurrences": low_a,
