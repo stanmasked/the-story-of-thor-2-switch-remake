@@ -107,8 +107,8 @@ struct Stage114ReturnWindow
   {
    std::fprintf(out,"%s,%lu,%lu",marker,completed,global_step);
    // The remaining 25 columns are empty except for the three trailing flags.
-   for(unsigned i=0;i<22;i++) std::fputc(',',out);
-   std::fprintf(out,"0,0,0\n");
+   for(unsigned i=0;i<25;i++) std::fputc(',',out);
+   std::fputc('\n',out);
    std::fflush(out);
    std::fclose(out);
    out=nullptr;
