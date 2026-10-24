@@ -69,24 +69,8 @@ jobs:
             cd "$dest"
             sha256sum mednafen-stage114 lib/libFLAC.so.12 > public-runtime-sha256.txt
           )
-          grep -Eq '^[0-9a-f]{64}  mednafen-stage114
-          printf 'source=ubuntu-noble-mednafen\nobserver=stage114-debug-return-site-window-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: stage114-public-only-mednafen-runtime
-          path: stage114-public-only-binary/
-          if-no-files-found: error
-          retention-days: 1
- "$dest/public-runtime-sha256.txt"
-          grep -Eq '^[0-9a-f]{64}  lib/libFLAC.so.12
-          printf 'source=ubuntu-noble-mednafen\nobserver=stage114-debug-return-site-window-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: stage114-public-only-mednafen-runtime
-          path: stage114-public-only-binary/
-          if-no-files-found: error
-          retention-days: 1
- "$dest/public-runtime-sha256.txt"
+          grep -Eq '^[0-9a-f]{64}  mednafen-stage114$' "$dest/public-runtime-sha256.txt"
+          grep -Eq '^[0-9a-f]{64}  lib/libFLAC.so.12$' "$dest/public-runtime-sha256.txt"
           printf 'source=ubuntu-noble-mednafen\nobserver=stage114-debug-return-site-window-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
       - uses: actions/upload-artifact@v4
         with:
