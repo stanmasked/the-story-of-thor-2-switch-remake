@@ -1,0 +1,82 @@
+name: Stage 115 public SH-2 bounded control-flow witness
+on:
+  pull_request:
+    paths:
+      - 'tools/stage115_patch_mednafen_control_flow_witness.py'
+      - 'tools/stage115_control_flow_event_gate.py'
+      - 'tests/test_stage115*.py'
+      - '.github/workflows/stage115-public-control-flow-witness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage115-control-flow-witness-\${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic-only regression and control-flow tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_stage109_patch_mednafen_observer.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage111_patch_mednafen_memory_witness.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage112*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage113*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage114*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage115*.py' -v
+      - name: Restore public Ubuntu Mednafen source and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage115-mednafen-source.list
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Acquire::Retries=1 update
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 install -y --no-install-recommends dpkg-dev build-essential python3
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 600 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 build-dep -y mednafen
+          mkdir -p /tmp/stage115-public-source
+          cd /tmp/stage115-public-source
+          timeout 180 apt-get -o Acquire::Retries=1 source mednafen
+          test -f mednafen-*/src/ss/ss.cpp
+      - name: Apply six default-disabled public-only observers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage115-public-source/mednafen-*
+          python3 "$GITHUB_WORKSPACE/tools/stage109_patch_mednafen_observer.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage111_patch_mednafen_memory_witness.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage112_patch_mednafen_event_monitor.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage113_patch_mednafen_selected_opcode.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage114_patch_mednafen_return_window.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage115_patch_mednafen_control_flow_witness.py" src/ss/ss.cpp
+          grep -Fq 'STAGE114_SH2_RETURN_SITE_WINDOW_V1' src/ss/ss.cpp
+          grep -Fq 'STAGE115_SH2_CONTROL_FLOW_WITNESS_V1' src/ss/ss.cpp
+      - name: Compile and package public runtime with exact FLAC ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage115-public-source/mednafen-*
+          ./configure --disable-nls
+          make -j 2
+          test -x src/mednafen
+          dest="$GITHUB_WORKSPACE/stage115-public-only-binary"
+          mkdir -p "$dest/lib"
+          cp src/mednafen "$dest/mednafen-stage115"
+          flac=$(ldd src/mednafen | awk '$1=="libFLAC.so.12" {print $3}')
+          test -f "$flac"
+          cp -L "$flac" "$dest/lib/libFLAC.so.12"
+          (
+            cd "$dest"
+            sha256sum mednafen-stage115 lib/libFLAC.so.12 > public-runtime-sha256.txt
+          )
+          grep -Eq '^[0-9a-f]{64}  mednafen-stage115$' "$dest/public-runtime-sha256.txt"
+          grep -Eq '^[0-9a-f]{64}  lib/libFLAC.so.12$' "$dest/public-runtime-sha256.txt"
+          printf 'source=ubuntu-noble-mednafen\nobserver=stage115-bounded-control-flow-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage115-public-only-mednafen-runtime
+          path: stage115-public-only-binary/
+          if-no-files-found: error
+          retention-days: 1
