@@ -1,0 +1,74 @@
+name: Stage 113 public SH-2 executed opcode witness
+on:
+  pull_request:
+    paths:
+      - 'tools/stage113_patch_mednafen_opcode_trace.py'
+      - 'tools/stage113_opcode_trace_gate.py'
+      - 'tests/test_stage113*.py'
+      - '.github/workflows/stage113-public-sh2-opcode-witness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage113-sh2-opcode-witness-\${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage113 and previous synthetic-only tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_stage109_patch_mednafen_observer.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage111_patch_mednafen_memory_witness.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage112*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage113*.py' -v
+      - name: Restore public Ubuntu Mednafen source and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage113-mednafen-source.list
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Acquire::Retries=1 update
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 install -y --no-install-recommends dpkg-dev build-essential python3
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 600 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 build-dep -y mednafen
+          mkdir -p /tmp/stage113-public-source
+          cd /tmp/stage113-public-source
+          timeout 180 apt-get -o Acquire::Retries=1 source mednafen
+          test -f mednafen-*/src/ss/ss.cpp
+          test -f mednafen-*/src/ss/sh7095.inc
+      - name: Apply default-disabled public-only SH-2 observers
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage113-public-source/mednafen-*
+          python3 "$GITHUB_WORKSPACE/tools/stage109_patch_mednafen_observer.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage111_patch_mednafen_memory_witness.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage112_patch_mednafen_event_monitor.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage113_patch_mednafen_opcode_trace.py" src/ss/sh7095.inc
+          grep -Fq 'STAGE112_PUBLIC_SH2_LIVENESS_MONITOR_V1' src/ss/ss.cpp
+          grep -Fq 'STAGE113_SH2_EXECUTED_OPCODE_TRACE_V1' src/ss/sh7095.inc
+      - name: Compile and package public runtime with exact FLAC ABI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage113-public-source/mednafen-*
+          ./configure --disable-nls
+          make -j 2
+          test -x src/mednafen
+          dest="$GITHUB_WORKSPACE/stage113-public-only-binary"
+          mkdir -p "$dest/lib"
+          cp src/mednafen "$dest/mednafen-stage113"
+          flac=$(ldd src/mednafen | awk '$1=="libFLAC.so.12" {print $3}')
+          test -f "$flac"
+          cp -L "$flac" "$dest/lib/libFLAC.so.12"
+          sha256sum "$dest/mednafen-stage113" "$dest/lib/libFLAC.so.12" > "$dest/public-runtime-sha256.txt"
+          printf 'source=ubuntu-noble-mednafen\nobserver=stage113-opcode-dispatch-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage113-public-only-mednafen-runtime
+          path: stage113-public-only-binary/
+          if-no-files-found: error
+          retention-days: 1
