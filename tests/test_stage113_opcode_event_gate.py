@@ -20,7 +20,7 @@ class Tests(unittest.TestCase):
  def test_good(self):
   t,p=make(GOOD)
   try:
-   out=audit(p);self.assertEqual(out['selected_opcode_pre_post_pairs'],2);self.assertEqual(out['rts_selected_records'],1);self.assertEqual(out['bsr_selected_records'],1);self.assertFalse(out['complete_bsr_rts_return_proven'])
+   out=audit(p);self.assertEqual(out['selected_opcode_pre_post_pairs'],2);self.assertEqual(out['parsed_event_count'],len(GOOD));self.assertEqual(out['rts_selected_records'],1);self.assertEqual(out['bsr_selected_records'],1);self.assertFalse(out['complete_bsr_rts_return_proven'])
   finally:t.cleanup()
  def test_empty(self):self.check_failure([])
  def test_bad_header(self):
