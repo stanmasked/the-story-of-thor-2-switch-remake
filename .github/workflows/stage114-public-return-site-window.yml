@@ -1,0 +1,80 @@
+name: Stage 114 public SH-2 return-site window
+on:
+  pull_request:
+    paths:
+      - 'tools/stage114_patch_mednafen_return_window.py'
+      - 'tools/stage114_return_window_gate.py'
+      - 'tests/test_stage114*.py'
+      - '.github/workflows/stage114-public-return-site-window.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage114-return-site-window
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic-only source and evidence gate tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_stage109_patch_mednafen_observer.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage111_patch_mednafen_memory_witness.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage112*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage113*.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage114*.py' -v
+      - name: Restore public Ubuntu Mednafen source and build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage114-mednafen-source.list
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Acquire::Retries=1 update
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 install -y --no-install-recommends dpkg-dev build-essential python3
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 600 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 build-dep -y mednafen
+          mkdir -p /tmp/stage114-public-source
+          cd /tmp/stage114-public-source
+          timeout 180 apt-get -o Acquire::Retries=1 source mednafen
+          test -f mednafen-*/src/ss/ss.cpp
+      - name: Apply five source-only default-disabled instruments
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage114-public-source/mednafen-*
+          python3 "$GITHUB_WORKSPACE/tools/stage109_patch_mednafen_observer.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage111_patch_mednafen_memory_witness.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage112_patch_mednafen_event_monitor.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage113_patch_mednafen_selected_opcode.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage114_patch_mednafen_return_window.py" src/ss/ss.cpp
+          grep -Fq 'STAGE113_SH2_DISPATCH_OPCODE_V1' src/ss/ss.cpp
+          grep -Fq 'STAGE114_SH2_RETURN_SITE_WINDOW_V1' src/ss/ss.cpp
+      - name: Build and archive public emulator plus runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage114-public-source/mednafen-*
+          ./configure --disable-nls
+          make -j 2
+          test -x src/mednafen
+          dest="$GITHUB_WORKSPACE/stage114-public-only-binary"
+          mkdir -p "$dest/lib"
+          cp src/mednafen "$dest/mednafen-stage114"
+          flac=$(ldd src/mednafen | awk '$1=="libFLAC.so.12" {print $3}')
+          test -f "$flac"
+          cp -L "$flac" "$dest/lib/libFLAC.so.12"
+          (
+            cd "$dest"
+            sha256sum mednafen-stage114 lib/libFLAC.so.12 > public-runtime-sha256.txt
+          )
+          grep -Eq '^[0-9a-f]{64}  mednafen-stage114$' "$dest/public-runtime-sha256.txt"
+          grep -Eq '^[0-9a-f]{64}  lib/libFLAC.so.12$' "$dest/public-runtime-sha256.txt"
+          printf 'source=ubuntu-noble-mednafen\nobserver=stage114-debug-return-site-window-opt-in\nrom-or-bios-uploaded=false\nprivate-game-data-in-artifact=false\n' > "$dest/provenance.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage114-public-only-mednafen-runtime
+          path: stage114-public-only-binary/
+          if-no-files-found: error
+          retention-days: 1
