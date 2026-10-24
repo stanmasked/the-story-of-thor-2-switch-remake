@@ -65,6 +65,8 @@ class Stage114PatchTests(unittest.TestCase):
         self.assertIn("follow_remaining=4",CODE)
         self.assertIn('Finish("step_limit")',CODE)
         self.assertIn('Finish("event_cap")',CODE)
+    def test_r13_transition_steps_are_retained(self):
+        self.assertIn("pending.r13!=post.r13", CODE)
     def test_marker_has_no_payload(self):
         self.assertIn("for(unsigned i=0;i<25;i++) std::fputc(',',out);",CODE)
 
