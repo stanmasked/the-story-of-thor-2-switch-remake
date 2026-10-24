@@ -2,6 +2,7 @@
 """Add a default-disabled private SH-2 opcode-dispatch trace to public Mednafen."""
 from __future__ import annotations
 import argparse
+import re
 from pathlib import Path
 
 SIGNATURE = "/* STAGE113_SH2_EXECUTED_OPCODE_TRACE_V1 */"
@@ -109,10 +110,11 @@ def patch(source: str) -> str:
         raise ValueError("already_patched_stage113")
     if source.count(STEP) != 1:
         raise ValueError("unsupported_sh2_step_anchor")
-    marker=source.index(STEP)
-    start=source.rfind("template<unsigned which, bool EmulateICache, int DebugMode>",0,marker)
-    if start < 0:
+    matches=list(re.finditer(r"template\s*<[^>]{1,180}>\s*INLINE\s+void\s+SH7095::Step\(void\)",source))
+    if len(matches)!=1:
         raise ValueError("unsupported_step_template")
+    start=matches[0].start()
+    marker=source.index(STEP)
     end=source.find(STATE,marker)
     if end < 0:
         raise ValueError("unsupported_step_end")
