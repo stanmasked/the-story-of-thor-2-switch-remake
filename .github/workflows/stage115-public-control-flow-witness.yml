@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: stage115-control-flow-witness-\${{ github.ref }}
+  group: stage115-control-flow-witness-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
