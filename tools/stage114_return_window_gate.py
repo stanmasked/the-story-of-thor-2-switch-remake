@@ -148,7 +148,17 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
                 bsr_r13 = int(bsr_rows[0]["pre_r13"],16)
                 rts_r13 = int(rts["pre_r13"],16)
                 return_r13 = int(ret_site["pre_r13"],16)
-                r13_preserved = bsr_r13 == rts_r13 == return_r13
+                path_rows = [d for rel, d in steps.items() if bsr_step <= rel <= rts_step + 2]
+                r13_preserved = (
+                    marker["kind"] == "complete" and bsr_ok and delay_slot_ok and
+                    len(byte_rows) == 1 and len(rts_rows) == 1 and rts_match_ok and
+                    rts_delay_slot_ok and return_site_ok and return_pc_match and
+                    bool(path_rows) and all(
+                        int(d["pre_r13"], 16) == bsr_r13 and
+                        int(d["post_r13"], 16) == bsr_r13
+                        for d in path_rows
+                    )
+                )
     complete = (
         marker["kind"] == "complete" and bsr_ok and delay_slot_ok and
         len(byte_rows) == 1 and len(rts_rows) == 1 and rts_match_ok and
