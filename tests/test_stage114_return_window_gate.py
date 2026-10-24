@@ -126,6 +126,25 @@ class Stage114GateTests(unittest.TestCase):
         finally:
             td.cleanup()
 
+    def test_large_absolute_global_counter_allowed(self):
+        rows = fixture()
+        for row in rows:
+            if row[0] in ("step", "complete", "step_limit", "event_cap"):
+                row[2] = str(int(row[2]) + 198_000_000)
+        out = self.run_good(rows)
+        self.assertTrue(out["capture_structure_valid"])
+        self.assertTrue(out["complete_observed_call_return_proven"])
+
+    def test_global_counter_drift_rejected(self):
+        rows = fixture()
+        rows[5][2] = str(int(rows[5][2]) + 1)
+        td, p = write(rows)
+        try:
+            with self.assertRaisesRegex(AuditError, "relative_global_step_mismatch"):
+                audit(p, TRIGGER, TARGET)
+        finally:
+            td.cleanup()
+
     def test_missing_marker_rejected(self):
         rows=fixture()[:-1];td,p=write(rows)
         try:
