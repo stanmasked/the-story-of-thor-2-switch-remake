@@ -27,6 +27,7 @@ def is_rts(pid):
     return ((pid>>24)&0xff)==0x6e and (pid&0xffff)==0x000b
 
 def audit(path: Path):
+    if path.is_symlink() or not path.is_file(): raise AuditError("invalid_input")
     try:
         with path.open(encoding="ascii",newline="") as f:
             rd=csv.reader(f)
@@ -64,6 +65,7 @@ def audit(path: Path):
                 if ctl=="rts" and not is_rts(pre_pid): raise AuditError("rts_selector_mismatch")
                 if d["target_bsr"]=="1" and ctl!="bsr": raise AuditError("target_bsr_flag_mismatch")
                 if d["target_rts_candidate"]=="1" and ctl!="rts": raise AuditError("target_rts_flag_mismatch")
+                if len(rows)>=16384: raise AuditError("row_limit")
                 rows.append(d)
     except (OSError,UnicodeError,csv.Error) as e:
         raise AuditError("unreadable_trace") from None
