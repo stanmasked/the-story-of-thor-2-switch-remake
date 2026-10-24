@@ -57,6 +57,10 @@ class Stage109PatchTests(unittest.TestCase):
         s=patch(BASE)
         self.assertLess(s.index('Record(CPU[0],"pre")'),s.index('CPU[0].Step<0, EmulateICache, DebugMode>();'))
         self.assertLess(s.index('CPU[0].Step<0, EmulateICache, DebugMode>();'),s.index('Record(CPU[0],"post")'))
+    def test_trigger_only_at_pre_step_boundary(self):
+        s=patch(BASE)
+        self.assertIn('if(std::strcmp(phase,"pre")) return;',s)
+        self.assertLess(s.index('if(std::strcmp(phase,"pre")) return;'),s.index('if(id!=trigger && fi!=trigger && rpc!=trigger) return;'))
     def test_trace_bounded(self):
         s=patch(BASE)
         self.assertIn('m<=4096',s)
