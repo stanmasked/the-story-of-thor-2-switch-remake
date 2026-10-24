@@ -4,10 +4,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from stage114_patch_mednafen_return_window import patch, SIGNATURE, CODE, PRE, POST, RUNLOOP
 
 FIXTURE = '''#include <cstdio>
-struct Stage112Monitor { bool enabled=false; uint32 trigger=1,target=0x06000000; unsigned long max_steps=350000; unsigned ByteAtTarget(){return 0;} void Configure(){} void Record(SH7095&,bool){} };
-static Stage112Monitor stage112_monitor;
 struct Stage113OpcodeWitness { bool enabled=false; uint32 trigger=1; void Configure(){} void Before(SH7095&){} void After(SH7095&){} };
 static Stage113OpcodeWitness stage113_opcode;
+struct Stage112Monitor { bool enabled=false; uint32 trigger=1,target=0x06000000; unsigned long max_steps=350000; unsigned ByteAtTarget(){return 0;} void Configure(){} void Record(SH7095&,bool){} };
+static Stage112Monitor stage112_monitor;
 void step() {
  '''+PRE+'''
  CPU[0].Step<0, EmulateICache, DebugMode>();
@@ -34,6 +34,9 @@ class Stage114PatchTests(unittest.TestCase):
     def test_missing_stage113_object_rejected(self):
         with self.assertRaisesRegex(ValueError,"stage113_object_anchor_mismatch"):
             patch(FIXTURE.replace("static Stage113OpcodeWitness stage113_opcode;",""))
+    def test_missing_stage112_object_rejected(self):
+        with self.assertRaisesRegex(ValueError,"stage112_object_anchor_mismatch"):
+            patch(FIXTURE.replace("static Stage112Monitor stage112_monitor;",""))
     def test_missing_pre_hook_rejected(self):
         with self.assertRaisesRegex(ValueError,"stage113_step_hook_anchor_mismatch"):
             patch(FIXTURE.replace(PRE,""))
