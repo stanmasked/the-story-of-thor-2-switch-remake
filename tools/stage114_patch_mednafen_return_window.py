@@ -11,6 +11,7 @@ from pathlib import Path
 
 SIGNATURE = "/* STAGE114_SH2_RETURN_SITE_WINDOW_V1 */"
 OBJECT = "static Stage113OpcodeWitness stage113_opcode;"
+INSERT_AFTER = "static Stage112Monitor stage112_monitor;"
 PRE = "if(stage113_opcode.enabled) stage113_opcode.Before(CPU[0]);"
 POST = "if(stage113_opcode.enabled) stage113_opcode.After(CPU[0]);"
 RUNLOOP = "end_ts = rltab[NeedEmuICache][DBG_NeedCPUHooks()](espec);"
@@ -197,11 +198,13 @@ def patch(text: str) -> str:
         raise ValueError("already_patched_stage114")
     if text.count(OBJECT) != 1:
         raise ValueError("stage113_object_anchor_mismatch")
+    if text.count(INSERT_AFTER) != 1:
+        raise ValueError("stage112_object_anchor_mismatch")
     if text.count(PRE) != 1 or text.count(POST) != 1:
         raise ValueError("stage113_step_hook_anchor_mismatch")
     if text.count(RUNLOOP) != 1:
         raise ValueError("runloop_selection_anchor_mismatch")
-    text=text.replace(OBJECT,OBJECT+"\n"+CODE,1)
+    text=text.replace(INSERT_AFTER,INSERT_AFTER+"\n"+CODE,1)
     text=text.replace(PRE,PRE+"\n    if(stage114_return_window.enabled) stage114_return_window.Before(CPU[0]);",1)
     text=text.replace(POST,POST+"\n    if(stage114_return_window.enabled) stage114_return_window.After(CPU[0]);",1)
     replacement=(
