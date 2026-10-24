@@ -47,6 +47,16 @@ class Stage109PatchTests(unittest.TestCase):
         s=patch(BASE)
         self.assertIn('std::strcmp(yes, "1")',s)
         self.assertIn('if(!yes',s)
+    def test_immediate_first_step_opt_in_only(self):
+        s=patch(BASE)
+        self.assertIn('STAGE109_SH2_OBSERVER_START_IMMEDIATELY',s)
+        self.assertIn('if(enabled && immediate && !std::strcmp(immediate,"1")) tracing=true;',s)
+        self.assertLess(s.index('enabled = (out != nullptr);'),s.index('if(enabled && immediate'))
+        self.assertIn('if(!yes || std::strcmp(yes, "1") || !pc || !dst || !*dst) return;',s)
+    def test_first_step_has_complete_pre_post_in_main_loop(self):
+        s=patch(BASE)
+        self.assertLess(s.index('Record(CPU[0],"pre")'),s.index('CPU[0].Step<0, EmulateICache, DebugMode>();'))
+        self.assertLess(s.index('CPU[0].Step<0, EmulateICache, DebugMode>();'),s.index('Record(CPU[0],"post")'))
     def test_trace_bounded(self):
         s=patch(BASE)
         self.assertIn('m<=4096',s)
