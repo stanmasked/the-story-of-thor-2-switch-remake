@@ -32,6 +32,7 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
     marker = None
     last_rel = 0
     last_global = 0
+    global_offset = None
     with path.open("r", encoding="ascii", newline="") as fp:
         reader = csv.reader(fp)
         if next(reader, None) != ["stage114_return_window_v1"]:
@@ -63,8 +64,13 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
             if not d["global_step"].isascii() or not d["global_step"].isdecimal():
                 raise AuditError("bad_global_step")
             rel, glob = int(d["relative_step"]), int(d["global_step"])
-            if rel <= last_rel or glob <= last_global or rel > 2000000 or glob > 5000000:
+            if rel <= last_rel or glob <= last_global or rel > 2000000 or glob > 0xffffffffffffffff:
                 raise AuditError("nonmonotonic_or_unbounded_step")
+            offset = glob - rel
+            if global_offset is None:
+                global_offset = offset
+            elif offset != global_offset:
+                raise AuditError("relative_global_step_mismatch")
             last_rel, last_global = rel, glob
             for k in ("pre_pc","pre_pc_id","pre_pc_if","pre_pipe_id","pre_pipe_if",
                       "pre_r3","pre_r13","pre_r15","pre_pr","pre_sr",
@@ -81,6 +87,10 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
             steps[rel] = d
     if marker is None:
         raise AuditError("missing_terminal_marker")
+    if (not steps or marker["relative_step"] < last_rel or marker["global_step"] < last_global or
+            marker["relative_step"] > 2000000 or marker["global_step"] > 0xffffffffffffffff or
+            global_offset is None or marker["global_step"] - marker["relative_step"] != global_offset):
+        raise AuditError("terminal_step_offset_mismatch")
     bsr_rows = [d for d in steps.values() if d["target_bsr"] == "1"]
     rts_rows = [d for d in steps.values() if d["target_rts_candidate"] == "1"]
     byte_rows = [d for d in steps.values() if d["byte_changed"] == "1"]
