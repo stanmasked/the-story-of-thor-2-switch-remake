@@ -104,6 +104,28 @@ class Stage114GateTests(unittest.TestCase):
         self.assertTrue(out["complete_observed_call_return_proven"])
         self.assertFalse(out["r13_preserved_on_observed_call_path"])
 
+    def test_512_step_rows_plus_terminal_marker_accepted(self):
+        rows = [step(n, n) for n in range(1, 513)]
+        rows.append(marker("event_cap", 512, 512))
+        td, p = write(rows)
+        try:
+            out = audit(p)
+            self.assertTrue(out["capture_structure_valid"])
+            self.assertEqual(out["recorded_step_rows"], 512)
+            self.assertEqual(out["terminal_marker"], "event_cap")
+        finally:
+            td.cleanup()
+
+    def test_513_step_rows_rejected(self):
+        rows = [step(n, n) for n in range(1, 514)]
+        rows.append(marker("event_cap", 513, 513))
+        td, p = write(rows)
+        try:
+            with self.assertRaisesRegex(AuditError, "row_limit"):
+                audit(p)
+        finally:
+            td.cleanup()
+
     def test_missing_marker_rejected(self):
         rows=fixture()[:-1];td,p=write(rows)
         try:
