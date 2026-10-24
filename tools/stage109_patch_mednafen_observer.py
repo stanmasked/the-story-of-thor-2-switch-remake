@@ -72,6 +72,8 @@ struct Stage109Observer
   const uint32 rpc=cpu.GetRegister(SH7095::GSREG_RPC,nullptr,0);
   if(!tracing)
   {
+   // Trigger only at a pre-step boundary: a post-only start is unpaired.
+   if(std::strcmp(phase,"pre")) return;
    if(id!=trigger && fi!=trigger && rpc!=trigger) return;
    tracing=true;
   }
