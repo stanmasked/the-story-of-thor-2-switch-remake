@@ -1,4 +1,6 @@
-import unittest
+import sys, unittest
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from stage115_patch_mednafen_control_flow_witness import patch
 
 FIXTURE = """static Stage114ReturnWindow stage114_return_window;
