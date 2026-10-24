@@ -168,7 +168,7 @@ struct Stage114ReturnWindow
   const bool byte_changed=(pending.byte!=post.byte);
   const bool log_this=(completed<=32 || byte_changed ||
                        pending_target_bsr || pending_target_rts ||
-                       follow_remaining>0);
+                       pending.r13!=post.r13 || follow_remaining>0);
   if(log_this) WritePair(pending,post,byte_changed,pending_target_bsr,pending_target_rts);
   if(pending_target_bsr && !target_bsr_seen)
   {
