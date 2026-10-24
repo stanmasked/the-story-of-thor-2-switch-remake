@@ -1,5 +1,6 @@
-import csv, json, tempfile, unittest
+import csv, json, sys, tempfile, unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from stage115_control_flow_event_gate import audit, AuditError, HEADER, MAGIC
 
 def h(x): return f"{x & 0xffffffff:08x}"
