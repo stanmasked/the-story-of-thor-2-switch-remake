@@ -176,6 +176,29 @@ class Stage115EventGateTests(unittest.TestCase):
             with self.assertRaisesRegex(AuditError,"terminal_before_last_step"): audit(p)
         finally:p.unlink()
 
+    def test_rejects_symlink_input(self):
+        source=write_trace(fixture(change=False))
+        link=source.with_name(source.name+" .link".replace(" ",""))
+        try:
+            link.symlink_to(source)
+            with self.assertRaisesRegex(AuditError,"invalid_input"): audit(link)
+        finally:
+            if link.exists() or link.is_symlink(): link.unlink()
+            source.unlink()
+
+    def test_rejects_event_count_above_hard_limit(self):
+        p=Path(tempfile.mkstemp()[1])
+        try:
+            with p.open("w",encoding="ascii",newline="") as f:
+                wr=csv.writer(f); wr.writerow(MAGIC); wr.writerow(HEADER)
+                for i in range(1,16386):
+                    d=row(i)
+                    wr.writerow([d[k] for k in HEADER])
+                tail=["complete","16385","17385"]+[""]*(len(HEADER)-3)
+                wr.writerow(tail)
+            with self.assertRaisesRegex(AuditError,"row_limit"): audit(p)
+        finally:p.unlink()
+
     def test_safe_output_has_no_raw_register_fields(self):
         p=write_trace(fixture(change=True))
         try:
