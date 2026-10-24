@@ -90,7 +90,9 @@ class Stage114GateTests(unittest.TestCase):
         self.assertTrue(out["rts_delay_slot_pipeline_match"])
         self.assertTrue(out["return_site_instruction_selected_and_step_completed"])
         self.assertTrue(out["return_pc_pipeline_match"])
-        self.assertTrue(out["r13_preserved_on_observed_call_path"])
+        self.assertTrue(out["r13_restored_at_observed_return_boundary"])
+        self.assertTrue(out["r13_entry_and_return_match"])
+        self.assertTrue(out["r13_unchanged_throughout_observed_window"])
         self.assertTrue(out["complete_observed_call_return_proven"])
         self.assertFalse(out["all_path_r13_preservation_proven"])
     def test_r13_change_inside_observed_window_not_preserved(self):
@@ -102,7 +104,9 @@ class Stage114GateTests(unittest.TestCase):
         rows[6][20] = hx(1)
         out = self.run_good(rows)
         self.assertTrue(out["complete_observed_call_return_proven"])
-        self.assertFalse(out["r13_preserved_on_observed_call_path"])
+        self.assertTrue(out["r13_restored_at_observed_return_boundary"])
+        self.assertTrue(out["r13_entry_and_return_match"])
+        self.assertFalse(out["r13_unchanged_throughout_observed_window"])
 
     def test_512_step_rows_plus_terminal_marker_accepted(self):
         rows = [step(n, n) for n in range(1, 513)]
@@ -202,7 +206,9 @@ class Stage114GateTests(unittest.TestCase):
     def test_r13_change_reported_but_not_all_paths(self):
         rows=fixture(); rows[11][9]=hx(2)
         out=self.run_good(rows)
-        self.assertFalse(out["r13_preserved_on_observed_call_path"])
+        self.assertFalse(out["r13_restored_at_observed_return_boundary"])
+        self.assertFalse(out["r13_entry_and_return_match"])
+        self.assertFalse(out["r13_unchanged_throughout_observed_window"])
         self.assertFalse(out["all_path_r13_preservation_proven"])
     def test_step_limit_is_incomplete(self):
         rows=fixture()[:-1]+[marker("step_limit",14,14)]
