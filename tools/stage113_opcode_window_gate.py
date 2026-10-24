@@ -56,17 +56,20 @@ def audit(path: Path):
     if len(byte_steps)>1: raise AuditError("multiple_byte_transitions_in_capture")
     if len(candidate_steps)>1: raise AuditError("multiple_candidates_in_capture")
     candidate=candidate_steps[0] if candidate_steps else None
-    post_candidate=sum(1 for rel in step_rows if candidate is not None and candidate<rel<=candidate+64)
+    post_candidate_steps=sorted(rel for rel in step_rows if candidate is not None and candidate<rel<=candidate+64)
+    post_candidate=len(post_candidate_steps)
+    candidate_contiguous=candidate is not None and post_candidate_steps==list(range(candidate+1,candidate+65))
+    trigger_window_contiguous=all(rel in step_rows for rel in range(1,257))
     byte_step=byte_steps[0] if byte_steps else None
     byte_row=step_rows.get(byte_step) if byte_step is not None else None
     return {
       "schema_version":1,"stage":"stage113_private_opcode_window_gate",
       "capture_structure_valid":True,"rows":count,"context_rows":context_count,"paired_step_rows":step_count,
-      "instruction_pc_fields_available":opcode_pc_rows>0,
+      "instruction_pc_fields_available":opcode_pc_rows>0,"trigger_window_complete":trigger_window_contiguous,
       "target_byte_transition_rows":len(byte_steps),"target_byte_transition_inside_paired_step":byte_row is not None,
       "target_byte_transition_opcode_pc_available":bool(byte_row and int(byte_row["pre_pc_id"],16)!=0),
       "rpc_equals_pr_candidate_rows":len(candidate_steps),"candidate_has_rts_opcode_and_return_pc_match":bool(rts_candidate_steps),
-      "post_candidate_step_rows":post_candidate,"candidate_window_complete":candidate is not None and post_candidate>=64,
+      "post_candidate_step_rows":post_candidate,"candidate_window_complete":candidate_contiguous,
       "complete_call_return_proven":False,"all_path_r13_preservation_proven":False,
       "private_addresses_opcodes_registers_and_bytes_emitted":False
     }
