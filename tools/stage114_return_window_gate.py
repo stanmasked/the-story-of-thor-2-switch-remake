@@ -99,7 +99,9 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
     rts_match_ok = False
     rts_delay_slot_ok = False
     return_site_ok = False
-    r13_preserved = False
+    r13_unchanged = False
+    r13_restored = False
+    r13_entry_return_match = False
     return_pc_match = False
     if len(bsr_rows) == 1:
         bsr = bsr_rows[0]
@@ -155,17 +157,28 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
             )
             return_pc_match = int(rts["post_pc_if"],16) == ret_pc
             if bsr_rows:
-                bsr_r13 = int(bsr_rows[0]["pre_r13"],16)
-                rts_r13 = int(rts["pre_r13"],16)
-                return_r13 = int(ret_site["pre_r13"],16)
+                entry_r13 = int(bsr_rows[0]["pre_r13"], 16)
                 path_rows = [d for rel, d in steps.items() if bsr_step <= rel <= rts_step + 2]
-                r13_preserved = (
+                boundary_rows = [steps.get(rts_step), delay, ret_site]
+                r13_entry_return_match = (
+                    int(rts["pre_r13"], 16) == entry_r13 and
+                    all(
+                        row is not None and
+                        int(row["pre_r13"], 16) == entry_r13 and
+                        int(row["post_r13"], 16) == entry_r13
+                        for row in boundary_rows
+                    )
+                )
+                r13_restored = (
                     marker["kind"] == "complete" and bsr_ok and delay_slot_ok and
                     len(byte_rows) == 1 and len(rts_rows) == 1 and rts_match_ok and
                     rts_delay_slot_ok and return_site_ok and return_pc_match and
-                    bool(path_rows) and all(
-                        int(d["pre_r13"], 16) == bsr_r13 and
-                        int(d["post_r13"], 16) == bsr_r13
+                    r13_entry_return_match
+                )
+                r13_unchanged = (
+                    marker["kind"] == "complete" and bool(path_rows) and all(
+                        int(d["pre_r13"], 16) == entry_r13 and
+                        int(d["post_r13"], 16) == entry_r13
                         for d in path_rows
                     )
                 )
@@ -189,7 +202,9 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
         "rts_delay_slot_pipeline_match": rts_delay_slot_ok,
         "return_site_instruction_selected_and_step_completed": return_site_ok,
         "return_pc_pipeline_match": return_pc_match,
-        "r13_preserved_on_observed_call_path": r13_preserved,
+        "r13_unchanged_throughout_observed_window": r13_unchanged,
+        "r13_restored_at_observed_return_boundary": r13_restored,
+        "r13_entry_and_return_match": r13_entry_return_match,
         "complete_observed_call_return_proven": complete,
         "all_path_r13_preservation_proven": False,
         "raw_private_addresses_opcodes_registers_or_bytes_emitted": False
