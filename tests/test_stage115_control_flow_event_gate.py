@@ -154,6 +154,28 @@ class Stage115EventGateTests(unittest.TestCase):
             with self.assertRaisesRegex(AuditError,"capture_incomplete"):audit(p)
         finally:p.unlink()
 
+    def test_rejects_any_row_after_terminal_marker(self):
+        rows=fixture(change=False)
+        p=write_trace(rows,marker="complete")
+        try:
+            final_row=rows[-1]
+            with p.open("a",encoding="ascii",newline="") as f:
+                csv.writer(f).writerow([final_row[k] for k in HEADER])
+            with self.assertRaisesRegex(AuditError,"row_after_terminal"): audit(p)
+        finally:p.unlink()
+
+    def test_rejects_terminal_marker_before_last_observed_step(self):
+        rows=fixture(change=False)
+        p=write_trace(rows,marker="complete")
+        try:
+            lines=p.read_text(encoding="ascii").splitlines()
+            fields=next(csv.reader([lines[-1]]))
+            fields[1]="0"
+            lines[-1]=",".join(fields)
+            p.write_text("\n".join(lines)+"\n",encoding="ascii")
+            with self.assertRaisesRegex(AuditError,"terminal_before_last_step"): audit(p)
+        finally:p.unlink()
+
     def test_safe_output_has_no_raw_register_fields(self):
         p=write_trace(fixture(change=True))
         try:
