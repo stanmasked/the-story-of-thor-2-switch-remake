@@ -93,6 +93,17 @@ class Stage114GateTests(unittest.TestCase):
         self.assertTrue(out["r13_preserved_on_observed_call_path"])
         self.assertTrue(out["complete_observed_call_return_proven"])
         self.assertFalse(out["all_path_r13_preservation_proven"])
+    def test_r13_change_inside_observed_window_not_preserved(self):
+        rows = fixture()
+        # A transient change and restoration inside the call must not be hidden
+        # by matching R13 snapshots at BSR, RTS, and the return-site instruction.
+        rows[5][20] = hx(2)
+        rows[6][9] = hx(2)
+        rows[6][20] = hx(1)
+        out = self.run_good(rows)
+        self.assertTrue(out["complete_observed_call_return_proven"])
+        self.assertFalse(out["r13_preserved_on_observed_call_path"])
+
     def test_missing_marker_rejected(self):
         rows=fixture()[:-1];td,p=write(rows)
         try:
