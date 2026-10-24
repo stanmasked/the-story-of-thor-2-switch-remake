@@ -34,12 +34,15 @@ def audit(path: Path):
             if next(rd,None)!=HEADER: raise AuditError("bad_header")
             rows=[]; terminal=None; last_step=0; last_global=0
             for raw in rd:
+                if terminal is not None: raise AuditError("row_after_terminal")
                 if len(raw)!=len(HEADER): raise AuditError("wrong_column_count")
                 d=dict(zip(HEADER,raw))
                 if d["kind"] in ("complete","step_limit","event_cap"):
-                    if terminal is not None: raise AuditError("duplicate_terminal")
                     terminal=d["kind"]
                     if not d["relative_step"].isdecimal() or not d["global_step"].isdecimal(): raise AuditError("bad_terminal_step")
+                    terminal_step=int(d["relative_step"]); terminal_global=int(d["global_step"])
+                    if terminal_step<last_step or terminal_global<last_global: raise AuditError("terminal_before_last_step")
+                    if terminal_step>2000000 or terminal_global>10000000000: raise AuditError("terminal_step_limit_exceeded")
                     if any(d[k] for k in HEADER[3:]): raise AuditError("terminal_payload")
                     continue
                 if d["kind"]!="step": raise AuditError("bad_row_kind")
