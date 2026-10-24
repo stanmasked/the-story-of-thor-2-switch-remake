@@ -22,8 +22,10 @@ class Stage113GateTests(unittest.TestCase):
     def test_valid_transition_and_rts_candidate_window(self):
         rows=[row('context',-1,1)]
         rows.append(row('step',1,2,pre_opcode='000023d0',pre_byte='00',post_byte='01'))
-        rows.append(row('step',2,3,pre_opcode='0000000b',pre_byte='01',post_byte='01',post_pc='00000020',post_pr='00000020',candidate='1'))
-        for n in range(3,67): rows.append(row('step',n,n+1,pre_opcode='00000000',pre_byte='01',post_byte='01'))
+        for n in range(2,257):
+            if n==2: rows.append(row('step',n,n+1,pre_opcode='0000000b',pre_byte='01',post_byte='01',post_pc='00000020',post_pr='00000020',candidate='1'))
+            else: rows.append(row('step',n,n+1,pre_opcode='00000000',pre_byte='01',post_byte='01'))
+        for n in range(257,321): rows.append(row('step',n,n+1,pre_opcode='00000000',pre_byte='01',post_byte='01'))
         p=make_file(rows)
         try:
             out=audit(p)
