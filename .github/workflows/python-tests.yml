@@ -1,8 +1,15 @@
 name: Saturn metadata tooling
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+# Run feature-branch validation through PRs, not duplicate push events.
+# Cancel stale PR revisions while preserving main and manual runs.
+concurrency:
+  group: thor2-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
