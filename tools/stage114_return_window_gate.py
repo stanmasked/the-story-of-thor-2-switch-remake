@@ -39,7 +39,7 @@ def audit(path: Path, expected_trigger: int | None = None, expected_target: int 
         if next(reader, None) != HEADER:
             raise AuditError("bad_header")
         for n, row in enumerate(reader, 1):
-            if n > 512:
+            if n > 513:  # up to 512 step rows plus one terminal marker
                 raise AuditError("row_limit")
             if len(row) != len(HEADER):
                 raise AuditError("column_count")
