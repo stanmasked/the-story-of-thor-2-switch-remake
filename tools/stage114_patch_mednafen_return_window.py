@@ -55,11 +55,26 @@ struct Stage114ReturnWindow
   configured=true;
   const char* yes=std::getenv("STAGE114_RETURN_WINDOW_ENABLE");
   const char* dest=std::getenv("STAGE114_RETURN_WINDOW_OUT");
+  const char* trig=std::getenv("STAGE114_RETURN_WINDOW_PC");
+  const char* ram=std::getenv("STAGE114_RETURN_WINDOW_RAM_POINTER");
+  const char* steps=std::getenv("STAGE114_RETURN_WINDOW_MAX_STEPS");
   if(!yes || std::strcmp(yes,"1") || !dest || !*dest ||
-     !stage112_monitor.enabled || !stage113_opcode.enabled) return;
-  trigger=stage112_monitor.trigger;
-  target=stage112_monitor.target;
-  max_steps=stage112_monitor.max_steps;
+     !trig || !ram || !stage113_opcode.enabled) return;
+  char* end=nullptr;
+  unsigned long parsed_trigger=std::strtoul(trig,&end,16);
+  if(!end || *end) return;
+  end=nullptr;
+  unsigned long parsed_target=std::strtoul(ram,&end,16);
+  if(!end || *end) return;
+  trigger=(uint32)parsed_trigger;
+  target=(uint32)parsed_target;
+  if(steps && *steps)
+  {
+   end=nullptr;
+   unsigned long parsed_steps=std::strtoul(steps,&end,10);
+   if(!end || *end) return;
+   max_steps=parsed_steps;
+  }
   if(trigger==0 || target<0x06000000U || target>=0x08000000U ||
      max_steps<1024 || max_steps>2000000 ||
      stage113_opcode.trigger!=trigger) return;
@@ -85,7 +100,7 @@ struct Stage114ReturnWindow
   r.r15=cpu.GetRegister(SH7095::GSREG_R15,nullptr,0);
   r.pr=cpu.GetRegister(SH7095::GSREG_PR,nullptr,0);
   r.sr=cpu.GetRegister(SH7095::GSREG_SR,nullptr,0);
-  r.byte=stage112_monitor.ByteAtTarget();
+  r.byte=ne16_rbo_be<uint8>(WorkRAMH,target & 0xfffffU);
   return r;
  }
  void WritePair(const Stage114Record& pre, const Stage114Record& post,
