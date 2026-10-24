@@ -1,0 +1,62 @@
+name: Stage 111 public SH2 high-WRAM witness
+on:
+  pull_request:
+    paths:
+      - 'tools/stage111_patch_mednafen_memory_witness.py'
+      - 'tests/test_stage111_patch_mednafen_memory_witness.py'
+      - '.github/workflows/stage111-public-sh2-memory-witness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage111-public-memory-witness-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic public tests (original observer and new memory witness)
+        run: |
+          python3 -m unittest discover -s tests -p 'test_stage109_patch_mednafen_observer.py' -v
+          python3 -m unittest discover -s tests -p 'test_stage111_patch_mednafen_memory_witness.py' -v
+      - name: Get distribution-authenticated public Mednafen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'deb-src http://archive.ubuntu.com/ubuntu noble main universe' | sudo tee /etc/apt/sources.list.d/stage111-mednafen-source.list
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Acquire::Retries=1 update
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 240 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 install -y --no-install-recommends dpkg-dev build-essential python3
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 600 apt-get -o Dpkg::Use-Pty=0 -o DPkg::Lock::Timeout=60 build-dep -y mednafen
+          mkdir -p /tmp/stage111-public-src
+          cd /tmp/stage111-public-src
+          timeout 180 apt-get -o Acquire::Retries=1 source mednafen
+          test -f mednafen-*/src/ss/ss.cpp
+      - name: Apply fail-closed public SH2 and side-effect-free high-RAM witness patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage111-public-src/mednafen-*
+          python3 "$GITHUB_WORKSPACE/tools/stage109_patch_mednafen_observer.py" src/ss/ss.cpp
+          python3 "$GITHUB_WORKSPACE/tools/stage111_patch_mednafen_memory_witness.py" src/ss/ss.cpp
+          grep -Fq 'STAGE109_SH2_OPT_IN_OBSERVER_V1' src/ss/ss.cpp
+          grep -Fq 'STAGE111_PRIVATE_RAM_WITNESS_V1' src/ss/ss.cpp
+      - name: Compile public emulator with default-disabled RAM witness
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/stage111-public-src/mednafen-*
+          ./configure --disable-nls
+          make -j 2
+          test -x src/mednafen
+          mkdir -p "$GITHUB_WORKSPACE/stage111-public-binary"
+          cp src/mednafen "$GITHUB_WORKSPACE/stage111-public-binary/mednafen-stage111"
+          sha256sum "$GITHUB_WORKSPACE/stage111-public-binary/mednafen-stage111" > "$GITHUB_WORKSPACE/stage111-public-binary/binary-sha256.txt"
+          printf 'observer-version=stage111-private-high-ram-witness-v1\nno-rom-or-bios-in-public-ci=true\ndefault-disabled=true\n' > "$GITHUB_WORKSPACE/stage111-public-binary/provenance.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage111-public-high-ram-witness
+          path: stage111-public-binary/
+          if-no-files-found: error
+          retention-days: 1
