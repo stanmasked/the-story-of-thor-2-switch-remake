@@ -18,7 +18,7 @@ class GateError(ValueError):pass
 
 def audit(path:Path)->dict:
  if path.is_symlink() or not path.is_file():raise GateError('invalid_file')
- counts=Counter();pairs=0;selected={};prev=-1;closed=False;start=False;laststep=0
+ counts=Counter();pairs=0;selected={};prev=-1;closed=False;start=False;laststep=0;row_count=0
  with path.open(encoding='ascii',newline='') as fp:
   reader=csv.reader(fp)
   try:head=next(reader)
@@ -26,6 +26,7 @@ def audit(path:Path)->dict:
   if head!=[HEADER]:raise GateError('bad_header')
   for i,row in enumerate(reader):
    if i>=16384:raise GateError('unbounded_input')
+   row_count+=1
    if len(row)!=10:raise GateError('wrong_columns')
    step,phase,kind,*hexes=row
    if not step.isascii() or not step.isdecimal():raise GateError('bad_step')
@@ -59,7 +60,7 @@ def audit(path:Path)->dict:
  if not start:raise GateError('empty_stream')
  if selected:raise GateError('incomplete_opcode_pair')
  return {'schema_version':1,'stage':'stage113_dispatch_selected_opcode_gate',
-         'parsed_event_count':sum(counts.values()),
+         'parsed_event_count':row_count,
          'selected_opcode_pre_post_pairs':pairs,
          'bsr_selected_records':counts['bsr_selected'],
          'jsr_selected_records':counts['jsr_selected'],
