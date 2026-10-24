@@ -36,6 +36,7 @@ struct Stage109Observer
   const char* pc = std::getenv("STAGE109_SH2_OBSERVER_PC");
   const char* dst = std::getenv("STAGE109_SH2_OBSERVER_OUT");
   const char* max = std::getenv("STAGE109_SH2_OBSERVER_MAX_STEPS");
+  const char* immediate = std::getenv("STAGE109_SH2_OBSERVER_START_IMMEDIATELY");
   if(!yes || std::strcmp(yes, "1") || !pc || !dst || !*dst) return;
   // Eight hex digits are required: no hardcoded private instruction address.
   if(std::strlen(pc) != 8) return;
@@ -52,6 +53,9 @@ struct Stage109Observer
   }
   out = std::fopen(dst,"wb");
   enabled = (out != nullptr);
+  // For a private smoke test, start at first executed Master SH-2 step.
+  // Still requires explicit enable=1, valid private PC and writable output.
+  if(enabled && immediate && !std::strcmp(immediate,"1")) tracing=true;
   if(enabled)
   {
    std::fprintf(out,"stage109_sh2_steps_v1\n");
